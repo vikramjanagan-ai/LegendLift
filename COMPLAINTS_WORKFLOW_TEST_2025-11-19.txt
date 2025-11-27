@@ -1,0 +1,142 @@
+================================================================================
+LEGENDLIFT - COMPLAINTS WORKFLOW COMPREHENSIVE TEST
+================================================================================
+Date: Wed Nov 19 15:26:19 IST 2025
+Test: Create 10 complaints, verify in all technician dashboards, test claiming
+
+STEP 1: Admin Login
+==================
+✅ Admin login successful
+Token: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJleHAiOjE3N...
+
+STEP 2: Technician Logins
+=========================
+Technicians in system:
+  - john@legendlift.com (John Doe)
+  - sarah@legendlift.com (Sarah Smith)
+  - mike@legendlift.com (Mike Johnson)
+  - tech@legendlift.com (Technician User)
+
+Technician Login Results:
+✅ tech@legendlift.com logged in
+✅ john@legendlift.com logged in
+✅ sarah@legendlift.com logged in
+
+STEP 3: Getting Customer IDs
+=============================
+Retrieved 10 customer IDs for testing
+
+STEP 4: Creating 10 Test Complaints
+====================================
+✅ Complaint 1 created: CMP-20251119-251D9 - Elevator Malfunction (Priority: high)
+✅ Complaint 2 created: CMP-20251119-03B48 - Maintenance Required (Priority: medium)
+✅ Complaint 3 created: CMP-20251119-2922D - Emergency Repair (Priority: high)
+✅ Complaint 4 created: CMP-20251119-76E13 - Inspection Needed (Priority: medium)
+✅ Complaint 5 created: CMP-20251119-9107C - Parts Replacement (Priority: low)
+✅ Complaint 6 created: CMP-20251119-6C4D7 - Strange Noise (Priority: high)
+✅ Complaint 7 created: CMP-20251119-63F2A - Door Not Closing (Priority: medium)
+✅ Complaint 8 created: CMP-20251119-2967A - Speed Issues (Priority: high)
+✅ Complaint 9 created: CMP-20251119-8BB2A - Light Malfunction (Priority: low)
+✅ Complaint 10 created: CMP-20251119-F4ACA - Safety Concern (Priority: medium)
+
+Total complaints created: 10
+
+STEP 5: Verify Complaints in All Technician Dashboards
+=======================================================
+Tech 1 (tech@legendlift.com) - Available Complaints:
+  Available: 15 complaints
+Tech 2 (john@legendlift.com) - Available Complaints:
+  Available: 15 complaints
+Tech 3 (sarah@legendlift.com) - Available Complaints:
+  Available: 15 complaints
+
+Verification Results:
+✅ All technicians can see the complaints in their available list
+
+STEP 6: Test Complaint Claiming from Multiple Technicians
+==========================================================
+Tech 1 (tech@legendlift.com) claiming 3 complaints...
+  ✅ Claimed complaint 1
+  ✅ Claimed complaint 2
+  ✅ Claimed complaint 3
+
+Tech 2 (john@legendlift.com) claiming 3 complaints...
+  ✅ Claimed complaint 4
+  ✅ Claimed complaint 5
+  ✅ Claimed complaint 6
+
+Tech 3 (sarah@legendlift.com) claiming 2 complaints...
+  ✅ Claimed complaint 7
+  ✅ Claimed complaint 8
+
+STEP 7: Test Double-Claim Prevention
+=====================================
+Attempting to claim already-claimed complaint (complaint 1 claimed by Tech 1)...
+✅ Double-claim prevention working!
+   Error message: This complaint has already been claimed by Technician User
+
+STEP 8: Verify in Admin Portal
+===============================
+Admin view of complaints:
+  Total complaints: 24
+  Claimed: 17
+  Unclaimed: 7
+
+Claimed complaints with technician names:
+  - Test Complaint 8: Speed Issues...
+    Assigned to: Sarah Smith | Status: in_progress
+  - Test Complaint 7: Door Not Closing...
+    Assigned to: Sarah Smith | Status: in_progress
+  - Test Complaint 6: Strange Noise...
+    Assigned to: John Doe | Status: in_progress
+  - Test Complaint 5: Parts Replacement...
+    Assigned to: John Doe | Status: in_progress
+  - Test Complaint 4: Inspection Needed...
+    Assigned to: John Doe | Status: in_progress
+  - Test Complaint 3: Emergency Repair...
+    Assigned to: Technician User | Status: in_progress
+  - Test Complaint 2: Maintenance Required...
+    Assigned to: Technician User | Status: in_progress
+  - Test Complaint 1: Elevator Malfunction...
+    Assigned to: Technician User | Status: in_progress
+  - Equipment Issue #5...
+    Assigned to: Technician User | Status: in_progress
+  - Equipment Issue #4...
+    Assigned to: Technician User | Status: in_progress
+
+STEP 9: Verify in Technician 'My Callbacks'
+============================================
+Tech 1 (tech@legendlift.com): 12 assigned complaints
+Tech 2 (john@legendlift.com): 3 assigned complaints
+Tech 3 (sarah@legendlift.com): 2 assigned complaints
+
+STEP 10: Test Technician Can Update Their Own Complaint
+========================================================
+✅ Technician can update their own complaint status!
+   Status: resolved
+   Notes: Fixed the elevator malfunction. Replaced faulty sensor.
+
+================================================================================
+TEST SUMMARY
+================================================================================
+
+✅ Completed Tests:
+  1. Admin login
+  2. All technician logins (3 technicians)
+  3. Created 10 test complaints
+  4. Verified complaints visible in all technician dashboards
+  5. Tested complaint claiming from multiple technicians
+  6. Tested double-claim prevention with error message
+  7. Verified assignments in admin portal with technician names
+  8. Verified 'My Callbacks' for all technicians
+  9. Tested technician permission to update their own complaints
+
+Complaint Distribution:
+  Tech 1 (tech@legendlift.com): Expected 3, Got 12
+  Tech 2 (john@legendlift.com): Expected 3, Got 3
+  Tech 3 (sarah@legendlift.com): Expected 2, Got 2
+  Unclaimed: 2 complaints (8, 9)
+
+================================================================================
+END OF TEST
+================================================================================

@@ -1,0 +1,229 @@
+LEGENDLIFT APP - CRITICAL FIXES REQUIRED
+========================================
+Date: 2025-10-14
+Priority: IMMEDIATE ACTION REQUIRED
+
+These issues will cause app crashes and navigation failures!
+
+═══════════════════════════════════════════════════════════════
+🔴 CRITICAL - WILL CRASH APP
+═══════════════════════════════════════════════════════════════
+
+ISSUE #1: ServicesScreen imported but NOT registered in AdminNavigator
+-----------------------------------------------------------------------
+File: /legendlift-mobile/src/navigation/AdminNavigator.js
+Problem: ServicesScreen is imported (line 8) but no Tab.Screen for it
+Impact: All navigation.navigate('Services') calls will CRASH
+Affected Buttons:
+  - AdminDashboard: "View Services" action button
+  - AdminDashboard: "Pending Services" stat card
+  - AdminDashboard: "Overdue Services" alert
+
+FIX OPTION 1 (Quick):
+Add Services as 6th tab in AdminNavigator:
+```javascript
+<Tab.Screen name="Services" component={ServicesScreen} />
+```
+
+FIX OPTION 2 (Better):
+Create Stack Navigator like Technician portal:
+```javascript
+const AdminStack = createNativeStackNavigator();
+
+const DashboardStack = () => (
+  <Stack.Navigator screenOptions={{ headerShown: false }}>
+    <Stack.Screen name="DashboardMain" component={AdminDashboardScreen} />
+    <Stack.Screen name="Services" component={ServicesScreen} />
+    <Stack.Screen name="Payments" component={PaymentsScreen} />
+  </Stack.Navigator>
+);
+```
+
+ISSUE #2: ServiceDetails vs ServiceDetail naming mismatch
+----------------------------------------------------------
+File: /legendlift-mobile/src/screens/technician/TechnicianDashboardScreen.js
+Line: 241
+Problem: Navigates to 'ServiceDetails' but navigator has 'ServiceDetail'
+Impact: Clicking service cards on Technician Dashboard will CRASH
+
+FIX:
+Change line 241 from:
+```javascript
+navigation?.navigate('ServiceDetails', { serviceId: service.id })
+```
+To:
+```javascript
+navigation?.navigate('ServiceDetail', { serviceId: service.id })
+```
+
+ISSUE #3: EditTechnician screen does not exist
+-----------------------------------------------
+File: /legendlift-mobile/src/screens/admin/TechnicianManagementScreen.js
+Line: 174
+Problem: Edit button navigates to 'EditTechnician' screen that doesn't exist
+Impact: Edit button in Technician Management will CRASH
+
+FIX OPTION 1 (Quick):
+Remove Edit button or show "Coming Soon" alert
+
+FIX OPTION 2 (Better):
+Create EditTechnicianScreen.js or use modal for inline editing
+
+═══════════════════════════════════════════════════════════════
+🟠 HIGH PRIORITY - WRONG DATA / BROKEN FEATURES
+═══════════════════════════════════════════════════════════════
+
+ISSUE #4: TechnicianDashboardScreen using wrong API endpoint
+-------------------------------------------------------------
+File: /legendlift-mobile/src/screens/technician/TechnicianDashboardScreen.js
+Lines: 39, 56
+Current: GET /services/schedules/today (admin endpoint)
+Correct: GET /technician/my-services/today (technician endpoint)
+Impact: Shows ALL services instead of technician's assigned services
+
+FIX:
+Line 39: Change endpoint from:
+```javascript
+const servicesRes = await fetch(`${API_CONFIG.BASE_URL}/services/schedules/today`, {
+```
+To:
+```javascript
+const servicesRes = await fetch(`${API_CONFIG.BASE_URL}/technician/my-services/today`, {
+```
+
+Line 56: Change endpoint from:
+```javascript
+const allServicesRes = await fetch(`${API_CONFIG.BASE_URL}/services/schedules`, {
+```
+To:
+```javascript
+const allServicesRes = await fetch(`${API_CONFIG.BASE_URL}/technician/service-history`, {
+```
+
+ISSUE #5: TodayServicesScreen using wrong API endpoint
+-------------------------------------------------------
+File: /legendlift-mobile/src/screens/technician/TodayServicesScreen.js
+Line: 32
+Current: GET /services/schedules/today (admin endpoint)
+Correct: GET /technician/my-services/today (technician endpoint)
+Impact: Shows ALL today's services instead of technician's services
+
+FIX:
+Change line 32 from:
+```javascript
+const response = await fetch(`${API_CONFIG.BASE_URL}/technician/my-services/today`, {
+```
+
+Wait - checking the file that was already fixed! Let me verify...
+
+═══════════════════════════════════════════════════════════════
+🟡 MEDIUM PRIORITY - MISSING FEATURES
+═══════════════════════════════════════════════════════════════
+
+ISSUE #6: PaymentsScreen not in AdminNavigator
+-----------------------------------------------
+File: /legendlift-mobile/src/navigation/AdminNavigator.js
+Problem: PaymentsScreen exists but not accessible
+Impact: Payment functionality not available to admins
+Note: Currently no navigation to Payments, so not breaking anything
+
+FIX:
+Either add as tab or add to stack navigator (see Issue #1 Fix Option 2)
+
+ISSUE #7: ServiceCheckInScreen exists but not in navigator
+-----------------------------------------------------------
+File: /legendlift-mobile/src/screens/technician/ServiceCheckInScreen.js
+Problem: Screen file exists but not registered anywhere
+Impact: Screen cannot be accessed
+Action: Either register in navigator OR delete if unused
+
+ISSUE #8: Admin Services API blocked by database issue
+-------------------------------------------------------
+Problem: /services/schedules returns validation error (contract_id NULL)
+Impact: ServicesScreen cannot load data even after fixing navigation
+Fix: Database issue - all 135 services have NULL contract_id
+
+═══════════════════════════════════════════════════════════════
+IMMEDIATE ACTION PLAN
+═══════════════════════════════════════════════════════════════
+
+STEP 1: Fix Critical Navigation Issues (15 minutes)
+----------------------------------------------------
+1. Fix TechnicianDashboardScreen.js line 241:
+   'ServiceDetails' → 'ServiceDetail'
+
+2. Add Services to AdminNavigator OR create stack:
+   Add line after line 55:
+   <Tab.Screen name="Services" component={ServicesScreen} />
+
+3. Fix EditTechnician issue in TechnicianManagementScreen.js:
+   Comment out Edit button OR show alert
+
+STEP 2: Fix Wrong Endpoints (10 minutes)
+-----------------------------------------
+4. Fix TechnicianDashboardScreen.js:
+   Line 39: /services/schedules/today → /technician/my-services/today
+   Line 56: /services/schedules → /technician/service-history
+
+5. Verify TodayServicesScreen.js already fixed (was done earlier)
+
+STEP 3: Test Navigation (30 minutes)
+-------------------------------------
+6. Test Admin Dashboard all buttons
+7. Test Technician Dashboard all buttons
+8. Test Customer Dashboard all buttons
+9. Test all tab navigation
+
+STEP 4: Medium Priority (1-2 hours)
+------------------------------------
+10. Add PaymentsScreen to AdminNavigator
+11. Delete or register ServiceCheckInScreen
+12. Create EditTechnicianScreen or implement modal
+
+═══════════════════════════════════════════════════════════════
+FILES TO MODIFY
+═══════════════════════════════════════════════════════════════
+
+CRITICAL (Must fix before testing):
+1. /legendlift-mobile/src/navigation/AdminNavigator.js
+   - Add Services tab
+
+2. /legendlift-mobile/src/screens/technician/TechnicianDashboardScreen.js
+   - Line 241: ServiceDetails → ServiceDetail
+   - Line 39: Fix endpoint
+   - Line 56: Fix endpoint
+
+3. /legendlift-mobile/src/screens/admin/TechnicianManagementScreen.js
+   - Line 174: Comment Edit button or add alert
+
+MEDIUM (Can wait):
+4. /legendlift-mobile/src/navigation/AdminNavigator.js
+   - Add Payments tab or create stack
+
+5. /legendlift-mobile/src/screens/technician/ServiceCheckInScreen.js
+   - Delete OR register in navigator
+
+═══════════════════════════════════════════════════════════════
+TESTING CHECKLIST AFTER FIXES
+═══════════════════════════════════════════════════════════════
+
+Admin Portal:
+□ Click "View Services" button - should navigate to Services tab
+□ Click "View Customers" button - should navigate to Customers tab
+□ Click "View Reports" button - should navigate to Reports tab
+□ Click "Manage Technicians" button - should navigate to Technicians tab
+□ Click stat cards - should navigate correctly
+□ Services tab should appear in bottom navigation
+
+Technician Portal:
+□ Click service card on Dashboard - should navigate to ServiceDetail
+□ Dashboard should show technician's services only (not all services)
+□ Today Services should show technician's services only
+□ Service History should show 33 completed services
+
+Customer Portal:
+□ All navigation already working (no issues found)
+
+═══════════════════════════════════════════════════════════════
+END OF CRITICAL FIXES DOCUMENT
+═══════════════════════════════════════════════════════════════

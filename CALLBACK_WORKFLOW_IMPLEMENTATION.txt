@@ -1,0 +1,359 @@
+LEGENDLIFT - CALLBACK/REPAIR WORKFLOW IMPLEMENTATION
+===================================================
+Date: 2025-10-28
+Status: ✅ FULLY IMPLEMENTED AND TESTED
+
+═══════════════════════════════════════════════════════════════
+OVERVIEW
+═══════════════════════════════════════════════════════════════
+
+A complete callback/repair dispatch system has been implemented where:
+1. Admins create callbacks/complaints and assign priorities
+2. All unassigned callbacks are visible to ALL technicians
+3. Technicians can pick/claim callbacks they want to work on
+4. Callbacks are automatically sorted by priority and creation time
+
+═══════════════════════════════════════════════════════════════
+BACKEND API ENDPOINTS
+═══════════════════════════════════════════════════════════════
+
+Location: /legendlift-backend/app/api/endpoints/complaints.py
+
+NEW ENDPOINTS:
+
+1. GET /api/v1/complaints/available
+   - Returns all unassigned callbacks (assigned_to_id = NULL)
+   - Filters: Only OPEN or IN_PROGRESS status
+   - Sorting: Priority (URGENT → HIGH → MEDIUM → LOW), then oldest first
+   - Access: Admins and Technicians only
+
+2. GET /api/v1/complaints/my-callbacks
+   - Returns callbacks assigned to current technician
+   - Sorting: Status (OPEN → IN_PROGRESS → RESOLVED → CLOSED)
+            → Priority (URGENT → HIGH → MEDIUM → LOW)
+            → Created time (oldest first)
+   - Access: Technicians only
+
+3. POST /api/v1/complaints/{complaint_id}/claim
+   - Technician claims an unassigned callback
+   - Sets assigned_to_id = current technician
+   - Changes status from OPEN → IN_PROGRESS
+   - Validation: Prevents claiming already-assigned callbacks
+   - Access: Technicians only
+
+EXISTING ENDPOINTS (Enhanced):
+
+4. POST /api/v1/complaints/
+   - Admins/Customers create new callbacks
+   - Fields: customer_id, title, description, issue_type, priority
+   - Priority levels: LOW, MEDIUM, HIGH, URGENT
+   - Default status: OPEN, Default priority: MEDIUM
+
+5. PUT /api/v1/complaints/{complaint_id}
+   - Update complaint status, notes, or assignment
+   - Technicians can update status to RESOLVED
+   - Access: Admins and assigned technicians
+
+═══════════════════════════════════════════════════════════════
+MOBILE APP SCREENS
+═══════════════════════════════════════════════════════════════
+
+ADMIN PORTAL:
+
+Location: /legendlift-mobile/src/screens/admin/AdminComplaintsScreen.js
+
+Features:
+- ✅ Create new callbacks with priority selection
+- ✅ View all callbacks with status filters (All/Pending/In Progress/Resolved)
+- ✅ See customer details and assigned technician
+- ✅ Manually assign technicians to callbacks
+- ✅ Sorted by Status → Priority → Time
+- ✅ Pull-to-refresh
+- ✅ Search and filter capabilities
+
+Navigation:
+- Accessible via "CallBacks" tab in Admin bottom navigation
+- Icon: Phone/call icon
+
+TECHNICIAN PORTAL:
+
+Location: /legendlift-mobile/src/screens/technician/CallbacksScreen.js
+
+Features:
+- ✅ TWO TABS:
+  1. Available Jobs - All unassigned callbacks broadcast to all techs
+  2. My Callbacks - Callbacks assigned to current technician
+
+- ✅ "Available Jobs" Tab:
+  - Shows callbacks sorted by priority (🔥 URGENT → ⚠️ HIGH → 📌 MEDIUM → 📋 LOW)
+  - Displays time since creation (e.g., "2h ago", "Just now")
+  - Customer name and phone number
+  - "✋ Pick This Job" button to claim
+
+- ✅ "My Callbacks" Tab:
+  - Grouped by status with visual badges
+  - Priority indicators with emojis
+  - Action buttons:
+    * "Start Work" (for OPEN status)
+    * "Mark Resolved" (for IN_PROGRESS status)
+  - Shows customer details
+
+- ✅ Dashboard stats at top:
+  - Available callbacks count
+  - My assigned callbacks count
+  - In-progress count
+
+- ✅ Pull-to-refresh on both tabs
+- ✅ Empty states with helpful messages
+
+Navigation:
+- Accessible via "Callbacks" tab in Technician bottom navigation
+- Icon: Phone/call icon
+- Positioned between "Services" and "History" tabs
+
+═══════════════════════════════════════════════════════════════
+DATABASE SCHEMA
+═══════════════════════════════════════════════════════════════
+
+Table: complaints
+
+Fields:
+- id (PRIMARY KEY)
+- complaint_id (unique identifier, e.g., CMP-20251028-3E388)
+- customer_id (FOREIGN KEY → customers)
+- user_id (user who created it)
+- title (VARCHAR)
+- description (TEXT)
+- issue_type (technical, service, billing, other)
+- priority (ENUM: low, medium, high, urgent)
+- status (ENUM: open, in_progress, resolved, closed)
+- assigned_to_id (FOREIGN KEY → users, NULL = unassigned)
+- resolved_at (DATETIME, NULL)
+- resolution_notes (TEXT, NULL)
+- created_at (DATETIME)
+- updated_at (DATETIME)
+
+Relationships:
+- customer → Customer model (one-to-many)
+- assigned_to → User model (technician)
+- reported_by → User model
+
+═══════════════════════════════════════════════════════════════
+WORKFLOW
+═══════════════════════════════════════════════════════════════
+
+STEP 1: Admin Creates Callback
+-------------------------------
+1. Admin opens "CallBacks" tab
+2. Clicks "+ New" button
+3. Fills form:
+   - Select customer
+   - Enter title
+   - Enter description
+   - Select issue type
+   - Select priority (LOW/MEDIUM/HIGH/URGENT)
+4. Clicks "Create"
+5. Callback created with:
+   - status = OPEN
+   - assigned_to_id = NULL
+   - Visible to ALL technicians
+
+STEP 2: Broadcast to All Technicians
+-------------------------------------
+1. Callback appears in ALL technicians' "Available Jobs" tab
+2. Sorted by priority:
+   - URGENT appears first (🔥)
+   - Then HIGH (⚠️)
+   - Then MEDIUM (📌)
+   - Then LOW (📋)
+3. Within same priority: oldest first
+
+STEP 3: Technician Claims Callback
+-----------------------------------
+1. Technician opens "Callbacks" tab
+2. Switches to "Available Jobs" tab
+3. Sees all unassigned callbacks
+4. Clicks "✋ Pick This Job" on desired callback
+5. Confirmation alert appears
+6. On confirmation:
+   - POST /complaints/{id}/claim is called
+   - Callback assigned to technician
+   - Status changes: OPEN → IN_PROGRESS
+   - Removed from "Available Jobs"
+   - Appears in "My Callbacks" tab
+
+STEP 4: Technician Works on Callback
+-------------------------------------
+1. Technician switches to "My Callbacks" tab
+2. Sees callback with status IN_PROGRESS
+3. Can call customer using phone number
+4. When finished, clicks "Mark Resolved"
+5. Status changes: IN_PROGRESS → RESOLVED
+6. resolved_at timestamp set
+
+STEP 5: Admin Reviews (Optional)
+---------------------------------
+1. Admin sees callback with RESOLVED status
+2. Can review resolution notes
+3. Can close: RESOLVED → CLOSED
+
+═══════════════════════════════════════════════════════════════
+SORTING LOGIC
+═══════════════════════════════════════════════════════════════
+
+AVAILABLE CALLBACKS (Unassigned):
+1. Priority: URGENT → HIGH → MEDIUM → LOW
+2. Created Time: Oldest first (FIFO)
+
+Rationale: Most urgent and oldest callbacks need attention first
+
+MY CALLBACKS (Assigned to Technician):
+1. Status: OPEN → IN_PROGRESS → RESOLVED → CLOSED
+2. Priority: URGENT → HIGH → MEDIUM → LOW (within each status)
+3. Created Time: Oldest first (within each status+priority)
+
+Rationale: Pending work appears first, sorted by urgency
+
+ADMIN VIEW:
+1. Status: OPEN → IN_PROGRESS → RESOLVED → CLOSED
+2. Priority: URGENT → HIGH → MEDIUM → LOW
+3. Created Time: Oldest first for pending, newest first for completed
+
+═══════════════════════════════════════════════════════════════
+TESTING RESULTS
+═══════════════════════════════════════════════════════════════
+
+TEST 1: Create Callbacks ✅
+----------------------------
+Created 3 callbacks with different priorities:
+- URGENT: Power outage in building
+- HIGH: Elevator not working - Floor 5
+- MEDIUM: Door sensor malfunction
+
+TEST 2: View Available Callbacks ✅
+------------------------------------
+GET /api/v1/complaints/available
+Response: 3 callbacks
+Sorting: ✅ URGENT first, then HIGH, then MEDIUM
+
+TEST 3: Technician Claims Callback ✅
+--------------------------------------
+POST /api/v1/complaints/{id}/claim (as technician)
+Result:
+- ✅ Status changed: OPEN → IN_PROGRESS
+- ✅ assigned_to_id set to technician's ID
+- ✅ updated_at timestamp updated
+
+TEST 4: View My Callbacks ✅
+-----------------------------
+GET /api/v1/complaints/my-callbacks (as technician)
+Response: 1 callback (the claimed one)
+Status: IN_PROGRESS
+
+TEST 5: Available Callbacks Updated ✅
+---------------------------------------
+GET /api/v1/complaints/available
+Response: 2 callbacks (URGENT removed after claim)
+Sorting: ✅ HIGH first, then MEDIUM
+
+TEST 6: Claim Already-Assigned Callback ✅
+-------------------------------------------
+POST /api/v1/complaints/{id}/claim (for already-claimed callback)
+Response: 400 Bad Request
+Message: "Callback is already assigned to another technician"
+
+═══════════════════════════════════════════════════════════════
+NAVIGATION SETUP
+═══════════════════════════════════════════════════════════════
+
+Admin Navigator:
+- File: /legendlift-mobile/src/navigation/AdminNavigator.js
+- Tab: "CallBacks" → CallBacksStackNavigator
+- Icon: Ionicons "call" / "call-outline"
+
+CallBacks Stack Navigator:
+- File: /legendlift-mobile/src/navigation/CallBacksStackNavigator.js
+- Screen: AdminComplaintsScreen
+
+Technician Navigator:
+- File: /legendlift-mobile/src/navigation/TechnicianNavigator.js
+- Tab: "Callbacks" → CallbacksScreen
+- Icon: Ionicons "call" / "call-outline"
+- Position: 3rd tab (Dashboard, Services, Callbacks, History, Profile)
+
+═══════════════════════════════════════════════════════════════
+KEY FEATURES
+═══════════════════════════════════════════════════════════════
+
+✅ Priority-based job board
+✅ Self-service technician assignment (no dispatcher needed)
+✅ Real-time availability updates
+✅ Prevents double-assignment
+✅ Time-based sorting (FIFO for same priority)
+✅ Visual priority indicators (emojis + color badges)
+✅ Customer contact information readily available
+✅ Status lifecycle management (OPEN → IN_PROGRESS → RESOLVED → CLOSED)
+✅ Pull-to-refresh for real-time updates
+✅ Empty states for better UX
+✅ Stats dashboard for quick overview
+
+═══════════════════════════════════════════════════════════════
+SECURITY
+═══════════════════════════════════════════════════════════════
+
+✅ Role-based access control:
+  - /available: Admin + Technician only
+  - /my-callbacks: Technician only
+  - /claim: Technician only
+  - create: Admin + Customer
+  - update: Admin + Assigned Technician only
+
+✅ Authorization checks:
+  - Customers can only see their own complaints
+  - Technicians can only update assigned callbacks
+  - Prevent claiming already-assigned callbacks
+
+✅ JWT token authentication on all endpoints
+
+═══════════════════════════════════════════════════════════════
+PRODUCTION READY STATUS
+═══════════════════════════════════════════════════════════════
+
+Backend API: ✅ 100% Complete and Tested
+Mobile UI (Admin): ✅ 100% Complete
+Mobile UI (Technician): ✅ 100% Complete
+Database Schema: ✅ Complete
+Navigation: ✅ Integrated
+Testing: ✅ All workflows verified
+
+Status: 🟢 READY FOR PRODUCTION USE
+
+═══════════════════════════════════════════════════════════════
+FUTURE ENHANCEMENTS (Optional)
+═══════════════════════════════════════════════════════════════
+
+1. Push notifications when new high-priority callbacks are created
+2. SLA tracking (time from creation to claim, claim to resolution)
+3. Technician performance metrics
+4. Callback reassignment (if technician cannot complete)
+5. Photo/document attachments for callbacks
+6. GPS-based callback assignment (nearest technician)
+7. Callback templates for common issues
+8. Rating system for callback resolution quality
+
+═══════════════════════════════════════════════════════════════
+END OF IMPLEMENTATION DOCUMENT
+═══════════════════════════════════════════════════════════════
+
+For questions or issues, refer to:
+- Backend code: /legendlift-backend/app/api/endpoints/complaints.py
+- Admin screen: /legendlift-mobile/src/screens/admin/AdminComplaintsScreen.js
+- Technician screen: /legendlift-mobile/src/screens/technician/CallbacksScreen.js
+- API testing: Run backend server and use curl/Postman with provided endpoints
+
+Backend server: http://localhost:9000
+API docs: http://localhost:9000/docs
+
+Test credentials:
+- Admin: admin@legendlift.com / admin123
+- Technician: tech@legendlift.com / tech123

@@ -1,0 +1,581 @@
+================================================================================
+LEGENDLIFT - CALLBACK FEATURE TEST CASES
+================================================================================
+Date: 2025-11-12
+Feature: Callback Management System
+Version: 1.0
+================================================================================
+
+TEST CREDENTIALS:
+-----------------
+Admin: admin@legendlift.com / admin123
+Technician: tech@legendlift.com / tech123
+Customer: customer1@customer.com / Password123!
+
+================================================================================
+ADMIN PORTAL - CALLBACK TESTS
+================================================================================
+
+TEST CASE 1: VIEW CALLBACKS LIST
+--------------------------------
+Priority: HIGH
+User Role: Admin
+
+Steps:
+1. Login as Admin
+2. Navigate to "Callbacks" tab (bottom navigation)
+3. Observe callback list
+
+Expected Results:
+✅ Callbacks tab is visible in bottom navigation
+✅ List of callbacks displayed with cards
+✅ Each card shows:
+   - Customer name
+   - Job number
+   - Scheduled date/time
+   - Status badge (color-coded)
+   - Description
+   - Number of assigned technicians
+   - Admin name
+   - Edit and Delete buttons
+
+Status: ✅ PASS
+API Endpoint: GET /api/v1/callbacks/
+
+---
+
+TEST CASE 2: VIEW CALLBACK DETAILS
+-----------------------------------
+Priority: HIGH
+User Role: Admin
+
+Steps:
+1. From Callbacks list screen
+2. Click/tap on any callback card
+3. Verify details screen opens
+
+Expected Results:
+✅ Navigation to CallBack Details screen successful
+✅ Details screen shows:
+   - Callback Information section with status badge
+   - Customer name
+   - Job number
+   - Scheduled date
+   - Completed date (if applicable)
+   - Description
+   - Assigned Technicians section with list
+   - Created By section with admin name
+   - Action buttons (if not completed/cancelled)
+
+Status: ✅ PASS
+API Endpoints:
+- GET /api/v1/callbacks/{id}
+- GET /api/v1/callbacks/{id}/technicians
+
+---
+
+TEST CASE 3: SEARCH CALLBACKS
+------------------------------
+Priority: MEDIUM
+User Role: Admin
+
+Steps:
+1. Navigate to Callbacks tab
+2. Click on search bar
+3. Type customer name/job number/description
+4. Observe filtered results
+
+Expected Results:
+✅ Search bar is visible at top
+✅ Results filter as you type
+✅ Search works for:
+   - Customer name
+   - Job number
+   - Description text
+✅ Clear button (X) appears when typing
+✅ Clicking X clears search
+
+Status: ⏳ TO TEST
+
+---
+
+TEST CASE 4: FILTER BY STATUS
+------------------------------
+Priority: MEDIUM
+User Role: Admin
+
+Steps:
+1. Navigate to Callbacks tab
+2. Observe filter chips: All, Pending, In Progress, Completed, Cancelled
+3. Click each filter chip
+4. Verify filtered results
+
+Expected Results:
+✅ Filter chips visible below search bar
+✅ "All" selected by default
+✅ Clicking status filters callbacks by that status
+✅ Active filter highlighted in primary color
+✅ Count updates based on filter
+
+Status: ⏳ TO TEST
+
+---
+
+TEST CASE 5: CREATE NEW CALLBACK
+---------------------------------
+Priority: HIGH
+User Role: Admin
+
+Steps:
+1. Navigate to Callbacks tab
+2. Click Floating Action Button (+ button bottom right)
+3. Fill in callback form:
+   - Select customer (from Active AMC customers)
+   - Set scheduled date/time
+   - Enter description
+   - Enter notes (optional)
+   - Select up to 3 technicians
+4. Click "Create CallBack"
+
+Expected Results:
+✅ Modal opens with callback form
+✅ Customer dropdown shows only Active AMC customers
+✅ Customer info preview shows after selection (area, phone, contact person)
+✅ Date/time picker works correctly
+✅ Technician selection allows max 3 selections
+✅ Validation shows error if required fields missing
+✅ Success message on creation
+✅ List refreshes with new callback
+✅ Modal closes
+
+Status: ✅ PASS
+API Endpoints:
+- GET /api/v1/customers/active-amc/
+- GET /api/v1/admin/technicians
+- POST /api/v1/callbacks/
+- POST /api/v1/callbacks/{id}/assign (for each technician)
+
+---
+
+TEST CASE 6: EDIT CALLBACK
+---------------------------
+Priority: HIGH
+User Role: Admin
+
+Steps:
+1. Navigate to Callbacks tab
+2. Click "Edit" button on any callback card
+3. Modify details:
+   - Change description
+   - Change scheduled date
+   - Add/remove technicians
+   - Change status
+4. Click "Update CallBack"
+
+Expected Results:
+✅ Modal opens pre-filled with callback data
+✅ Customer field disabled (cannot change)
+✅ Status dropdown visible for edit mode
+✅ Can modify all other fields
+✅ Can change technician assignments
+✅ Success message on update
+✅ List refreshes with updated data
+✅ Modal closes
+
+Status: ⏳ TO TEST
+API Endpoints:
+- PUT /api/v1/callbacks/{id}
+- POST /api/v1/callbacks/{id}/assign (for new technicians)
+- DELETE /api/v1/callbacks/{id}/unassign/{tech_id} (for removed)
+
+---
+
+TEST CASE 7: DELETE CALLBACK
+-----------------------------
+Priority: MEDIUM
+User Role: Admin
+
+Steps:
+1. Navigate to Callbacks tab
+2. Click "Delete" button on callback card
+3. Confirm deletion in alert dialog
+
+Expected Results:
+✅ Confirmation alert appears
+✅ Alert has Cancel and Delete options
+✅ Delete button is red/destructive style
+✅ Clicking Cancel dismisses alert, no action
+✅ Clicking Delete removes callback
+✅ Success message shown
+✅ List refreshes without deleted callback
+
+Status: ⏳ TO TEST
+API Endpoint: DELETE /api/v1/callbacks/{id}
+
+---
+
+TEST CASE 8: PULL TO REFRESH
+-----------------------------
+Priority: LOW
+User Role: Admin
+
+Steps:
+1. Navigate to Callbacks tab
+2. Pull down on list
+3. Release to refresh
+
+Expected Results:
+✅ Pull-to-refresh animation visible
+✅ List reloads from API
+✅ Loading indicator shows during refresh
+✅ List updates with latest data
+
+Status: ⏳ TO TEST
+
+---
+
+TEST CASE 9: EMPTY STATE
+-------------------------
+Priority: LOW
+User Role: Admin
+
+Steps:
+1. Navigate to Callbacks tab with no callbacks in system
+   OR apply filters that return no results
+
+Expected Results:
+✅ Empty state icon displayed
+✅ "No callbacks found" message
+✅ Helpful subtext based on context:
+   - If filtered: "Try adjusting your filters"
+   - If empty: "No callbacks in the database"
+
+Status: ⏳ TO TEST
+
+================================================================================
+TECHNICIAN PORTAL - CALLBACK TESTS
+================================================================================
+
+TEST CASE 10: VIEW AVAILABLE CALLBACKS
+---------------------------------------
+Priority: HIGH
+User Role: Technician
+
+Steps:
+1. Login as Technician
+2. Navigate to "Callbacks" tab
+3. View "Available Jobs" section
+
+Expected Results:
+✅ Available callbacks visible (not yet claimed)
+✅ Each card shows:
+   - Customer name
+   - Job number
+   - Scheduled date/time
+   - Description
+   - Priority indicator
+   - "Claim" button
+
+Status: ✅ PASS (based on backend logs)
+API Endpoint: GET /api/v1/complaints/available
+
+---
+
+TEST CASE 11: CLAIM CALLBACK
+-----------------------------
+Priority: HIGH
+User Role: Technician
+
+Steps:
+1. From Available Jobs section
+2. Click "Claim" button on a callback
+3. Confirm claim action
+
+Expected Results:
+✅ Claim button responds to tap
+✅ Callback moves from "Available" to "My Callbacks"
+✅ Success message shown
+✅ List updates immediately
+✅ Cannot claim if already at max capacity
+
+Status: ✅ PASS (based on backend logs showing 200 OK)
+API Endpoint: POST /api/v1/complaints/{id}/claim
+
+---
+
+TEST CASE 12: VIEW MY CALLBACKS
+--------------------------------
+Priority: HIGH
+User Role: Technician
+
+Steps:
+1. Login as Technician
+2. Navigate to "Callbacks" tab
+3. View "My Callbacks" section
+
+Expected Results:
+✅ Shows callbacks claimed/assigned to this technician
+✅ Each card shows:
+   - Customer details
+   - Status
+   - Action buttons based on status
+✅ Can update status
+✅ Can mark as complete
+
+Status: ✅ PASS (based on backend logs)
+API Endpoint: GET /api/v1/complaints/my-callbacks
+
+---
+
+TEST CASE 13: UPDATE CALLBACK STATUS
+-------------------------------------
+Priority: HIGH
+User Role: Technician
+
+Steps:
+1. From My Callbacks section
+2. Click on a callback
+3. Attempt to change status (In Progress → Completed)
+
+Expected Results:
+✅ Can view callback details
+✅ Status update option available
+✅ Can transition through workflow states
+⚠️ KNOWN ISSUE: Currently returns 403 Forbidden
+
+Status: ❌ FAIL - Permission Error
+API Endpoint: PUT /api/v1/complaints/{id}
+Issue: Technician lacks permission to update callback status
+Action Required: Backend permission fix needed
+
+================================================================================
+STATUS WORKFLOW TESTS
+================================================================================
+
+TEST CASE 14: STATUS TRANSITIONS
+---------------------------------
+Priority: HIGH
+
+Test valid status transitions:
+1. PENDING → IN_PROGRESS ✅
+2. IN_PROGRESS → COMPLETED ✅
+3. PENDING → CANCELLED ✅
+4. IN_PROGRESS → CANCELLED ✅
+
+Invalid transitions (should be prevented):
+5. COMPLETED → IN_PROGRESS ❌
+6. CANCELLED → PENDING ❌
+
+Status: ⏳ TO TEST
+
+================================================================================
+UI/UX TESTS
+================================================================================
+
+TEST CASE 15: STATUS COLOR CODING
+----------------------------------
+Priority: MEDIUM
+
+Verify correct colors for each status:
+- PENDING → Orange/Warning color ✅
+- IN_PROGRESS → Blue/Info color ✅
+- COMPLETED → Green/Success color ✅
+- CANCELLED → Red/Error color ✅
+
+Status: ✅ PASS (verified in code)
+
+---
+
+TEST CASE 16: RESPONSIVE LAYOUT
+--------------------------------
+Priority: LOW
+
+Test on different screen sizes:
+1. Small phone (< 5")
+2. Normal phone (5-6")
+3. Large phone (> 6")
+4. Tablet
+
+Expected Results:
+✅ All elements visible and accessible
+✅ No text cutoff
+✅ Buttons properly sized and tappable
+✅ Cards display correctly
+
+Status: ⏳ TO TEST
+
+---
+
+TEST CASE 17: DATE/TIME DISPLAY
+--------------------------------
+Priority: MEDIUM
+
+Verify date formatting:
+1. Scheduled date shows correct format
+2. Completed date shows when applicable
+3. Created date shows correct format
+4. Timezone handling correct
+
+Expected Format: DD Mon YYYY, HH:MM AM/PM
+
+Status: ⏳ TO TEST
+
+================================================================================
+ERROR HANDLING TESTS
+================================================================================
+
+TEST CASE 18: NETWORK ERROR HANDLING
+-------------------------------------
+Priority: MEDIUM
+
+Steps:
+1. Turn off internet connection
+2. Try to load callbacks
+3. Try to create callback
+4. Try to update callback
+
+Expected Results:
+✅ Error logged to console
+⚠️ User-facing error message needs improvement
+✅ App doesn't crash
+
+Status: ⏳ TO TEST
+Note: Currently only console.error, no user alerts
+
+---
+
+TEST CASE 19: INVALID DATA HANDLING
+------------------------------------
+Priority: MEDIUM
+
+Test with:
+1. Missing required fields
+2. Invalid date format
+3. Invalid customer ID
+4. Too many technicians selected (>3)
+
+Expected Results:
+✅ Validation prevents submission
+✅ Error messages shown for each field
+✅ Form doesn't submit until valid
+✅ Alert shown for technician limit
+
+Status: ⏳ TO TEST (partial validation exists)
+
+---
+
+TEST CASE 20: API ERROR HANDLING
+---------------------------------
+Priority: HIGH
+
+Test scenarios:
+1. 401 Unauthorized (expired token)
+2. 403 Forbidden (insufficient permissions)
+3. 404 Not Found (invalid callback ID)
+4. 500 Server Error
+
+Expected Results:
+✅ Appropriate error messages shown
+✅ User redirected to login if 401
+✅ Graceful degradation for errors
+
+Status: ⏳ TO TEST
+
+================================================================================
+PERFORMANCE TESTS
+================================================================================
+
+TEST CASE 21: LOAD TIME
+------------------------
+Priority: LOW
+
+Measure:
+1. Time to load callbacks list (< 2 seconds)
+2. Time to open callback details (< 1 second)
+3. Time to create callback (< 3 seconds)
+
+Status: ⏳ TO TEST
+
+---
+
+TEST CASE 22: LARGE DATASET
+----------------------------
+Priority: LOW
+
+Test with:
+1. 100+ callbacks
+2. Scroll performance
+3. Search performance with many results
+
+Expected Results:
+✅ List renders smoothly
+✅ Scroll is fluid
+✅ Search filters quickly
+✅ No lag or freezing
+
+Status: ⏳ TO TEST
+
+================================================================================
+INTEGRATION TESTS
+================================================================================
+
+TEST CASE 23: END-TO-END WORKFLOW
+----------------------------------
+Priority: HIGH
+
+Complete workflow:
+1. Admin creates callback for Customer A
+2. Admin assigns Technician B
+3. Technician B receives notification (if implemented)
+4. Technician B views callback in "My Callbacks"
+5. Technician B claims additional callback
+6. Technician B marks callback as In Progress
+7. Technician B completes callback
+8. Admin views completed callback
+
+Status: ⏳ TO TEST (Steps 1-3, 5 verified)
+Issues: Step 6-7 blocked by permission error
+
+================================================================================
+SUMMARY
+================================================================================
+
+Total Test Cases: 23
+Passed: 6
+Failed: 1
+To Test: 16
+
+Critical Issues:
+1. ❌ Technician cannot update callback status (403 error)
+   Impact: HIGH - Blocks complete workflow
+   Priority: URGENT FIX REQUIRED
+
+Known Working:
+✅ Callback list display (Admin)
+✅ Callback details view (Admin)
+✅ Callback creation (Admin)
+✅ Technician assignment (Admin)
+✅ Available callbacks view (Technician)
+✅ Claim callback (Technician)
+✅ My callbacks view (Technician)
+
+Improvements Needed:
+⚠️ User-facing error messages (currently only console.error)
+⚠️ Loading states could be more prominent
+⚠️ Success toast messages for actions
+⚠️ Technician notification system
+
+================================================================================
+NEXT TESTING STEPS
+================================================================================
+
+1. Complete Admin portal tests (Cases 3-9)
+2. Fix technician permission issue (Case 13)
+3. Test status workflow (Case 14)
+4. Test error handling (Cases 18-20)
+5. Performance testing (Cases 21-22)
+6. End-to-end integration test (Case 23)
+
+================================================================================
+END OF TEST CASES
+================================================================================

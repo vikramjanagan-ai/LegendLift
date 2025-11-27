@@ -1,0 +1,317 @@
+================================================================================
+LEGENDLIFT - BACKEND & FRONTEND STARTUP INSTRUCTIONS
+================================================================================
+
+This file contains the complete instructions to start both the backend API
+server and the mobile app (frontend) for the LegendLift Elevator AMC Management
+System.
+
+================================================================================
+PREREQUISITES
+================================================================================
+
+1. PostgreSQL database must be running on localhost:5432
+   Database: legendlift
+   User: legendlift_user
+   Password: legendlift_secure_password_2025
+
+2. Node.js and npm must be installed
+3. Python 3.10+ must be installed
+4. Expo Go app installed on your mobile device
+
+================================================================================
+STEP 1: START BACKEND SERVER
+================================================================================
+
+1. Open terminal and navigate to backend directory:
+   cd /home/minnal/source/LegendLift/legendlift-backend
+
+2. Kill any existing backend processes:
+   pkill -9 -f "python run.py"
+
+3. Start backend server in background:
+   nohup python run.py > backend.log 2>&1 &
+
+4. Verify backend is running:
+   tail -f backend.log
+
+   You should see:
+   - INFO: Uvicorn running on http://0.0.0.0:9000
+   - INFO: Application startup complete
+
+5. Test backend locally:
+   curl http://localhost:9000/
+
+================================================================================
+STEP 2: START LOCALTUNNEL FOR BACKEND (For Remote Access)
+================================================================================
+
+1. Kill any existing localtunnel processes:
+   pkill -9 -f "localtunnel"
+
+2. Start localtunnel in background:
+   cd /home/minnal/source/LegendLift/legendlift-backend
+   nohup npx localtunnel --port 9000 > backend-tunnel.log 2>&1 &
+
+3. Wait 10 seconds, then get the tunnel URL:
+   sleep 10
+   cat backend-tunnel.log
+
+   You will see something like:
+   "your url is: https://some-random-words.loca.lt"
+
+4. Copy this URL (e.g., https://some-random-words.loca.lt)
+
+IMPORTANT: If localtunnel crashes (common issue), just restart it:
+   - Kill it: pkill -9 -f "localtunnel"
+   - Restart: nohup npx localtunnel --port 9000 > backend-tunnel.log 2>&1 &
+   - Get new URL: cat backend-tunnel.log
+   - Update the mobile app config with the new URL (see STEP 3)
+
+================================================================================
+STEP 3: UPDATE MOBILE APP CONFIG WITH TUNNEL URL
+================================================================================
+
+1. Open the mobile app constants file:
+   nano /home/minnal/source/LegendLift/legendlift-mobile/src/constants/index.js
+
+2. Find the BASE_URL line (around line 6):
+   BASE_URL: 'https://old-url.loca.lt/api/v1',
+
+3. Replace with your NEW tunnel URL from STEP 2:
+   BASE_URL: 'https://your-new-url.loca.lt/api/v1',
+
+4. Save the file (Ctrl+O, Enter, Ctrl+X in nano)
+
+================================================================================
+STEP 4: START MOBILE APP (EXPO)
+================================================================================
+
+1. Navigate to mobile app directory:
+   cd /home/minnal/source/LegendLift/legendlift-mobile
+
+2. Kill any existing Expo processes:
+   pkill -9 -f "expo start"
+
+3. Clean up old logs:
+   rm -f expo.log
+
+4. Start Expo with tunnel mode in background:
+   nohup npx expo start --tunnel > expo.log 2>&1 &
+
+5. Wait 15-20 seconds for Expo to start, then check status:
+   tail -f expo.log
+
+   You should see:
+   - Starting Metro Bundler
+   - Tunnel connected.
+   - Tunnel ready.
+
+6. To view the QR code for scanning with Expo Go:
+   npx expo start --tunnel
+   (This will show the QR code in the terminal)
+
+================================================================================
+STEP 5: CONNECT MOBILE DEVICE
+================================================================================
+
+1. Install "Expo Go" app from App Store (iOS) or Play Store (Android)
+
+2. Open Expo Go app on your mobile device
+
+3. Scan the QR code shown by the Expo server
+   OR
+   Manually enter the tunnel URL (shown in the Expo output)
+
+4. Wait for the app to load on your device
+
+================================================================================
+STEP 6: TEST THE APP
+================================================================================
+
+Login Credentials:
+
+Admin Account:
+  Email: admin@legendlift.com
+  Password: admin123
+  Role: Admin
+
+Technician Account:
+  Email: tech1@legendlift.com
+  Password: tech123
+  Role: Technician
+
+Customer Account:
+  Email: customer1@legendlift.com
+  Password: customer123
+  Role: Customer
+
+================================================================================
+QUICK START SCRIPT (All in One)
+================================================================================
+
+If you want to start everything at once, run these commands:
+
+# Kill all existing processes
+pkill -9 -f "python run.py"
+pkill -9 -f "localtunnel"
+pkill -9 -f "expo start"
+
+# Start backend
+cd /home/minnal/source/LegendLift/legendlift-backend
+nohup python run.py > backend.log 2>&1 &
+sleep 3
+
+# Start backend tunnel
+nohup npx localtunnel --port 9000 > backend-tunnel.log 2>&1 &
+sleep 10
+
+# Get tunnel URL
+echo "Backend Tunnel URL:"
+cat backend-tunnel.log
+
+# IMPORTANT: Now manually update the mobile app config file with this URL
+# Edit: /home/minnal/source/LegendLift/legendlift-mobile/src/constants/index.js
+# Update BASE_URL with the tunnel URL shown above
+
+# After updating the config, start mobile app
+cd /home/minnal/source/LegendLift/legendlift-mobile
+rm -f expo.log
+nohup npx expo start --tunnel > expo.log 2>&1 &
+sleep 15
+
+# Check status
+echo "Expo Status:"
+tail -20 expo.log
+
+================================================================================
+TROUBLESHOOTING
+================================================================================
+
+Problem: Backend port 9000 already in use
+Solution:
+  lsof -i :9000
+  kill -9 <PID>
+  Then restart backend
+
+Problem: Localtunnel crashes with "connection refused"
+Solution:
+  This is a common issue with localtunnel service
+  Just restart it and get a new URL:
+  pkill -9 -f "localtunnel"
+  nohup npx localtunnel --port 9000 > backend-tunnel.log 2>&1 &
+  sleep 10
+  cat backend-tunnel.log
+  Update the mobile app BASE_URL with the new URL
+
+Problem: Mobile app shows "Network Error"
+Solution:
+  1. Check if backend is running: curl http://localhost:9000/
+  2. Check if localtunnel is working: cat backend-tunnel.log
+  3. Verify BASE_URL in mobile app config matches tunnel URL
+  4. Restart localtunnel and update BASE_URL if needed
+
+Problem: Expo won't start or shows errors
+Solution:
+  pkill -9 -f "expo"
+  cd /home/minnal/source/LegendLift/legendlift-mobile
+  rm -rf node_modules/.cache
+  npx expo start --tunnel --clear
+
+Problem: Service schedules endpoint shows validation error
+Solution:
+  The fix has been applied to handle NULL scheduled_date values.
+  Backend will auto-reload. If issues persist, restart backend.
+
+================================================================================
+CHECKING LOGS
+================================================================================
+
+Backend Log:
+  tail -f /home/minnal/source/LegendLift/legendlift-backend/backend.log
+
+Backend Tunnel Log:
+  tail -f /home/minnal/source/LegendLift/legendlift-backend/backend-tunnel.log
+
+Mobile App Log:
+  tail -f /home/minnal/source/LegendLift/legendlift-mobile/expo.log
+
+================================================================================
+STOPPING SERVICES
+================================================================================
+
+Stop Backend:
+  pkill -9 -f "python run.py"
+
+Stop Backend Tunnel:
+  pkill -9 -f "localtunnel"
+
+Stop Mobile App:
+  pkill -9 -f "expo start"
+
+Stop All Services:
+  pkill -9 -f "python run.py"
+  pkill -9 -f "localtunnel"
+  pkill -9 -f "expo start"
+
+================================================================================
+CURRENT CONFIGURATION (as of latest session)
+================================================================================
+
+Backend:
+  - Running on: http://0.0.0.0:9000
+  - Latest Tunnel URL: https://early-pots-notice.loca.lt
+  - Database: PostgreSQL localhost:5432/legendlift
+  - Log: /home/minnal/source/LegendLift/legendlift-backend/backend.log
+
+Mobile App:
+  - Metro Bundler: http://localhost:8081
+  - Expo Tunnel: Connected and ready
+  - BASE_URL: https://early-pots-notice.loca.lt/api/v1
+  - Theme: Purple gradient (#7C3AED → #A78BFA)
+  - Log: /home/minnal/source/LegendLift/legendlift-mobile/expo.log
+
+================================================================================
+NOTES
+================================================================================
+
+1. The localtunnel URL changes every time you restart it. Always update the
+   mobile app BASE_URL after restarting localtunnel.
+
+2. For same network access (no tunnel needed), you can use local IP:
+   BASE_URL: 'http://172.28.222.133:9000/api/v1'
+
+3. The backend has auto-reload enabled, so code changes will automatically
+   restart the server (no need to manually restart).
+
+4. The Expo dev server also has hot reload, so mobile app changes will
+   automatically update on the device.
+
+5. If you get "Bypass Tunnel Reminder" warnings from localtunnel, the app
+   already sends the bypass header, so you can ignore these.
+
+================================================================================
+IMPORTANT FIX APPLIED
+================================================================================
+
+Service Schedules Fix:
+  - Fixed ResponseValidationError for NULL scheduled_date values
+  - Location: /home/minnal/source/LegendLift/legendlift-backend/app/schemas/service.py
+  - Change: Made scheduled_date Optional in ServiceScheduleResponse schema
+  - Status: Applied and backend auto-reloaded
+
+Callbacks Fix (Previously Applied):
+  - Fixed double-encoded JSON for technicians field
+  - Location: /home/minnal/source/LegendLift/legendlift-backend/app/api/endpoints/callbacks.py
+  - Status: Working correctly
+
+================================================================================
+END OF INSTRUCTIONS
+================================================================================
+
+Created: November 26, 2025
+Last Updated: November 26, 2025
+Project: LegendLift Elevator AMC Management System
+Version: 1.0
+
+For questions or issues, check the logs in the locations mentioned above.

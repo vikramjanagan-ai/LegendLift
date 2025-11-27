@@ -1,0 +1,58 @@
+================================================================================
+📱 LEGENDLIFT MOBILE APP - START COMMAND
+================================================================================
+
+✅ Backend is RUNNING: https://clean-hornets-laugh.loca.lt
+✅ Purple gradient theme is APPLIED
+✅ Database has 516+ records
+
+================================================================================
+🚀 COMMAND TO START MOBILE APP IN TUNNEL MODE:
+================================================================================
+
+cd /home/minnal/source/LegendLift/legendlift-mobile && npx expo start --tunnel
+
+================================================================================
+📱 AFTER RUNNING THE COMMAND:
+================================================================================
+
+1. Wait 10-20 seconds for tunnel to connect
+2. Browser will open automatically at http://localhost:19002
+3. Scan the QR code with Expo Go app
+4. Wait 30-60 seconds for app to load (first time)
+5. Login with: admin@legendlift.com / admin123
+
+================================================================================
+🔐 LOGIN CREDENTIALS:
+================================================================================
+
+Admin:
+  Email: admin@legendlift.com
+  Password: admin123
+
+Technician:
+  Email: john@legendlift.com
+  Password: tech123
+
+================================================================================
+⚡ QUICK ACTIONS IN TERMINAL:
+================================================================================
+
+After starting, press:
+  r = Reload app
+  a = Open on Android emulator
+  w = Open in web browser
+  j = Open debugger
+  ? = Show all commands
+
+================================================================================
+🛑 TO STOP:
+================================================================================
+
+Press Ctrl+C in the terminal
+
+OR
+
+pkill -f expo && pkill -f metro
+
+================================================================================
