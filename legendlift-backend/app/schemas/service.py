@@ -23,6 +23,7 @@ class ServiceScheduleUpdate(BaseModel):
     status: Optional[ServiceStatus] = None
     technician_id: Optional[str] = None
     technician2_id: Optional[str] = None
+    technician3_id: Optional[str] = None
     days_overdue: Optional[int] = None
     notes: Optional[str] = None
 
@@ -37,6 +38,7 @@ class ServiceScheduleResponse(BaseModel):
     status: ServiceStatus = ServiceStatus.PENDING
     technician_id: Optional[str] = None
     technician2_id: Optional[str] = None
+    technician3_id: Optional[str] = None
     days_overdue: Optional[int] = None
     is_adhoc: Optional[str] = None
     service_type: Optional[str] = None
@@ -51,6 +53,7 @@ class ServiceScheduleResponse(BaseModel):
     route: Optional[int] = None
     technician_name: Optional[str] = None
     technician2_name: Optional[str] = None
+    technician3_name: Optional[str] = None
 
     class Config:
         from_attributes = True

@@ -49,6 +49,9 @@ class ServiceSchedule(Base):
     technician3 = relationship("User", foreign_keys=[technician3_id])
     reports = relationship("ServiceReport", back_populates="service", cascade="all, delete-orphan")
 
+    # Many-to-many relationship with technicians (new approach for unlimited technicians)
+    assigned_technicians = relationship("ServiceTechnician", back_populates="service", cascade="all, delete-orphan")
+
 
 class ServiceReport(Base):
     __tablename__ = "service_reports"

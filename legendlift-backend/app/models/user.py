@@ -30,3 +30,6 @@ class User(Base):
     assigned_services_2 = relationship("ServiceSchedule", back_populates="technician2", foreign_keys="ServiceSchedule.technician2_id")
     service_reports = relationship("ServiceReport", back_populates="technician")
     escalations = relationship("Escalation", back_populates="assigned_to")
+
+    # Many-to-many relationship with services (new approach for unlimited assignments)
+    service_assignments = relationship("ServiceTechnician", back_populates="technician", foreign_keys="ServiceTechnician.technician_id")

@@ -17,8 +17,34 @@ from app.schemas.service import (
 )
 from app.api.deps import get_current_user, get_current_active_admin
 from app.utils.id_generator import generate_sequential_service_id
+from app.models.service_technician import ServiceTechnician
 
 router = APIRouter()
+
+
+def enrich_service_with_technicians(service_dict: dict, service_id: str, db: Session) -> dict:
+    """
+    Helper function to enrich service dict with all assigned technicians
+    """
+    # Get all assigned technicians from service_technicians table
+    assignments = db.query(ServiceTechnician).filter(
+        ServiceTechnician.service_id == service_id
+    ).order_by(ServiceTechnician.order).all()
+
+    assigned_technicians = []
+    for assignment in assignments:
+        tech = db.query(User).filter(User.id == assignment.technician_id).first()
+        if tech:
+            assigned_technicians.append({
+                "id": tech.id,
+                "name": tech.name,
+                "is_primary": assignment.is_primary,
+                "order": assignment.order
+            })
+
+    service_dict["assigned_technicians"] = assigned_technicians
+    service_dict["technician_count"] = len(assigned_technicians)
+    return service_dict
 
 
 # Service Schedule Endpoints
@@ -105,6 +131,9 @@ def get_service_schedules(
         if service.technician2:
             service_dict["technician2_name"] = service.technician2.name
 
+        # Add all assigned technicians
+        service_dict = enrich_service_with_technicians(service_dict, service.id, db)
+
         result.append(service_dict)
 
     return result
@@ -166,6 +195,9 @@ def get_today_services(
         if service.technician2:
             service_dict["technician2_name"] = service.technician2.name
 
+        # Add all assigned technicians
+        service_dict = enrich_service_with_technicians(service_dict, service.id, db)
+
         result.append(service_dict)
 
     return result
@@ -218,6 +250,9 @@ def get_service_schedule(
         service_dict["technician_name"] = service.technician.name
     if service.technician2:
         service_dict["technician2_name"] = service.technician2.name
+
+    # Add all assigned technicians
+    service_dict = enrich_service_with_technicians(service_dict, service.id, db)
 
     return service_dict
 

@@ -19,6 +19,7 @@ from app.schemas.service import (
 )
 from app.api.deps import get_current_user
 from app.utils.id_generator import generate_sequential_service_id, generate_report_id, generate_uuid
+from app.models.service_technician import ServiceTechnician
 from pydantic import BaseModel
 
 router = APIRouter()
@@ -214,9 +215,16 @@ def get_my_today_services(
 
     today = datetime.now().date()
 
-    # Get all services (scheduled + ad-hoc)
-    services = db.query(ServiceSchedule).join(Customer).filter(
-        ServiceSchedule.technician_id == current_user.id,
+    # Get all services where current technician is assigned (using new many-to-many relationship)
+    # First get all service_ids where this technician is assigned
+    assigned_service_ids = db.query(ServiceTechnician.service_id).filter(
+        ServiceTechnician.technician_id == current_user.id
+    ).all()
+    assigned_service_ids = [sid[0] for sid in assigned_service_ids]
+
+    # Get all services (scheduled + ad-hoc) where technician is assigned
+    services = db.query(ServiceSchedule).filter(
+        ServiceSchedule.id.in_(assigned_service_ids),
         ServiceSchedule.status.in_([
             ServiceStatus.PENDING,
             ServiceStatus.SCHEDULED,
@@ -227,6 +235,23 @@ def get_my_today_services(
     result = []
     for service in services:
         customer = db.query(Customer).filter(Customer.id == service.customer_id).first()
+
+        # Get all assigned technicians for this service
+        assignments = db.query(ServiceTechnician).filter(
+            ServiceTechnician.service_id == service.id
+        ).order_by(ServiceTechnician.order).all()
+
+        assigned_techs = []
+        for assignment in assignments:
+            tech = db.query(User).filter(User.id == assignment.technician_id).first()
+            if tech:
+                assigned_techs.append({
+                    "id": tech.id,
+                    "name": tech.name,
+                    "is_primary": assignment.is_primary,
+                    "is_me": (tech.id == current_user.id)
+                })
+
         result.append({
             "id": service.id,
             "service_id": service.service_id,
@@ -240,6 +265,8 @@ def get_my_today_services(
             "service_type": service.service_type,
             "is_adhoc": service.is_adhoc,
             "notes": service.notes,
+            "assigned_technicians": assigned_techs,
+            "technician_count": len(assigned_techs)
         })
 
     return result
@@ -290,3 +317,220 @@ def get_service_history(
         })
 
     return result
+
+
+@router.get("/available-tickets", response_model=List[dict])
+def get_available_tickets(
+    skip: int = 0,
+    limit: int = 100,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """
+    Get all available tickets/services that technicians can pick up
+    Shows tickets that are either:
+    - Not assigned to anyone
+    - Partially assigned (can accommodate more technicians)
+
+    Excludes tickets that current technician is already assigned to
+    """
+
+    if current_user.role != "technician":
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Only technicians can access this endpoint"
+        )
+
+    # Get all pending/scheduled services
+    available_services = db.query(ServiceSchedule).filter(
+        ServiceSchedule.status.in_([
+            ServiceStatus.PENDING,
+            ServiceStatus.SCHEDULED
+        ])
+    ).offset(skip).limit(limit).all()
+
+    result = []
+    for service in available_services:
+        # Get all assigned technicians for this service
+        assignments = db.query(ServiceTechnician).filter(
+            ServiceTechnician.service_id == service.id
+        ).all()
+
+        # Check if current user is already assigned
+        already_assigned = any(a.technician_id == current_user.id for a in assignments)
+
+        if already_assigned:
+            continue  # Skip tickets already assigned to this technician
+
+        # Get customer info
+        customer = db.query(Customer).filter(Customer.id == service.customer_id).first()
+
+        # Get assigned technician names
+        assigned_techs = []
+        for assignment in assignments:
+            tech = db.query(User).filter(User.id == assignment.technician_id).first()
+            if tech:
+                assigned_techs.append({
+                    "id": tech.id,
+                    "name": tech.name,
+                    "is_primary": assignment.is_primary
+                })
+
+        result.append({
+            "id": service.id,
+            "service_id": service.service_id,
+            "customer_id": service.customer_id,
+            "customer_name": customer.name if customer else "Unknown",
+            "customer_location": customer.area if customer else "Unknown",
+            "customer_address": customer.address if customer else "Unknown",
+            "customer_phone": customer.phone if customer else "Unknown",
+            "scheduled_date": service.scheduled_date.isoformat() if service.scheduled_date else None,
+            "status": service.status.value,
+            "service_type": service.service_type.value if service.service_type else None,
+            "notes": service.notes,
+            "assigned_technicians": assigned_techs,
+            "technician_count": len(assigned_techs)
+        })
+
+    return result
+
+
+@router.post("/pick-ticket/{service_id}", response_model=dict)
+def pick_ticket(
+    service_id: str,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """
+    Allow technician to pick/claim a ticket
+    Adds the current technician to the service assignment list
+    """
+
+    if current_user.role != "technician":
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Only technicians can pick tickets"
+        )
+
+    # Find the service
+    service = db.query(ServiceSchedule).filter(ServiceSchedule.id == service_id).first()
+    if not service:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Service not found"
+        )
+
+    # Check if technician is already assigned
+    existing_assignment = db.query(ServiceTechnician).filter(
+        ServiceTechnician.service_id == service_id,
+        ServiceTechnician.technician_id == current_user.id
+    ).first()
+
+    if existing_assignment:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="You are already assigned to this ticket"
+        )
+
+    # Get current number of assignments to determine order
+    current_assignments = db.query(ServiceTechnician).filter(
+        ServiceTechnician.service_id == service_id
+    ).count()
+
+    # Create new assignment
+    assignment = ServiceTechnician(
+        id=generate_uuid(),
+        service_id=service_id,
+        technician_id=current_user.id,
+        assigned_by=current_user.id,  # Self-assigned
+        is_primary=(current_assignments == 0),  # First technician is primary
+        order=current_assignments
+    )
+
+    db.add(assignment)
+
+    # Also update the old technician_id field for backward compatibility
+    if current_assignments == 0:
+        service.technician_id = current_user.id
+    elif current_assignments == 1:
+        service.technician2_id = current_user.id
+    elif current_assignments == 2:
+        service.technician3_id = current_user.id
+
+    db.commit()
+    db.refresh(assignment)
+
+    # Get updated list of all technicians
+    all_assignments = db.query(ServiceTechnician).filter(
+        ServiceTechnician.service_id == service_id
+    ).all()
+
+    assigned_techs = []
+    for a in all_assignments:
+        tech = db.query(User).filter(User.id == a.technician_id).first()
+        if tech:
+            assigned_techs.append({
+                "id": tech.id,
+                "name": tech.name,
+                "is_primary": a.is_primary
+            })
+
+    return {
+        "message": "Successfully picked ticket",
+        "service_id": service.service_id,
+        "service_db_id": service.id,
+        "assigned_technicians": assigned_techs,
+        "your_assignment": {
+            "is_primary": assignment.is_primary,
+            "order": assignment.order
+        }
+    }
+
+
+@router.delete("/unpick-ticket/{service_id}", response_model=dict)
+def unpick_ticket(
+    service_id: str,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """
+    Allow technician to unpick/release a ticket they picked
+    Removes the current technician from the service assignment list
+    """
+
+    if current_user.role != "technician":
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Only technicians can unpick tickets"
+        )
+
+    # Find the assignment
+    assignment = db.query(ServiceTechnician).filter(
+        ServiceTechnician.service_id == service_id,
+        ServiceTechnician.technician_id == current_user.id
+    ).first()
+
+    if not assignment:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="You are not assigned to this ticket"
+        )
+
+    # Delete the assignment
+    db.delete(assignment)
+
+    # Update old fields for backward compatibility
+    service = db.query(ServiceSchedule).filter(ServiceSchedule.id == service_id).first()
+    if service.technician_id == current_user.id:
+        service.technician_id = None
+    if service.technician2_id == current_user.id:
+        service.technician2_id = None
+    if service.technician3_id == current_user.id:
+        service.technician3_id = None
+
+    db.commit()
+
+    return {
+        "message": "Successfully released ticket",
+        "service_id": service.service_id
+    }
