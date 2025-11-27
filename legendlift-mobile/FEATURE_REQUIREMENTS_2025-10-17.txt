@@ -1,0 +1,802 @@
+================================================================================
+LEGENDLIFT APP - FEATURE REQUIREMENTS & IMPLEMENTATION PLAN
+Date: October 17, 2025
+Status: Pending Implementation
+================================================================================
+
+================================================================================
+SECTION 1: CUSTOMER MANAGEMENT
+================================================================================
+
+1.1 ADD NEW CUSTOMER FORM - ADDITIONAL FIELDS
+----------------------------------------------
+Current State: Basic customer fields exist (name, job_number, area, phone)
+
+NEW FIELDS TO ADD:
+✓ Customer name (exists)
+✓ Site name (exists as "name")
+✓ Job number (exists)
+✓ Area (exists)
+✓ Contact number (exists as "phone")
+
+NEW REQUIRED FIELDS:
+❌ AMC valid period FROM date (Date picker)
+❌ AMC valid period TO date (Date picker)
+❌ No of services per year (Dropdown: 6, 9, 10, 12)
+❌ AMC amount (Decimal - total contract amount)
+❌ AMC amount received (Decimal - partial payment tracking)
+❌ AMC amount balance (Auto-calculated: total - received)
+❌ AMC status (Enum: Active/Inactive/Expiring Soon)
+❌ Type of door (Dropdown: Automatic, Manual, Semi-automatic)
+❌ Type of controller (Text input)
+❌ Number of floors (Integer input)
+❌ Building type (Dropdown: Residential, Commercial, Industrial, Mixed)
+❌ Lift capacity (String: e.g., "8 persons" or "630 kg")
+❌ Installation date (Date picker - optional)
+❌ Warranty expiry date (Date picker - optional)
+
+VALIDATION RULES:
+- AMC TO date must be > AMC FROM date
+- AMC amount received cannot exceed AMC amount
+- No of services per year: only allow 6, 9, 10, 12
+- Admin sets initial AMC status manually
+
+
+1.2 AMC STATUS AUTO-MANAGEMENT
+-------------------------------
+BUSINESS RULES:
+1. Admin creates customer with AMC status = "Active" (manual)
+2. System runs daily check (cron job/scheduled task):
+   - If current_date > amc_valid_to + 30 days → Set status = "Inactive"
+   - If current_date > amc_valid_to AND current_date <= amc_valid_to + 30 days → Set status = "Expiring Soon"
+   - If current_date >= amc_valid_from AND current_date <= amc_valid_to → Keep status = "Active"
+
+IMPLEMENTATION:
+- Backend cron job: runs daily at 00:01 AM
+- Update all customers' AMC status based on dates
+- Log status changes
+- Optional: Send notification to admin for expiring AMCs
+
+
+1.3 AUTO SERVICE SCHEDULE CREATION
+-----------------------------------
+TRIGGER: When admin creates/updates customer with AMC details
+
+LOGIC:
+1. Calculate service interval:
+   - 12 services/year = every 30 days (365/12)
+   - 10 services/year = every 36 days (365/10)
+   - 9 services/year = every 40 days (365/9)
+   - 6 services/year = every 60 days (365/6)
+
+2. Generate services:
+   - First service date = AMC valid FROM date
+   - Subsequent services = previous_date + interval
+   - Continue until date <= AMC valid TO date
+
+3. Service details:
+   - service_type = "SERVICE" (AMC service)
+   - status = "PENDING"
+   - customer_id = customer ID
+   - scheduled_date = calculated date
+   - is_adhoc = False
+   - contract_id = AMC contract reference
+
+EXAMPLE:
+AMC FROM: 2025-01-01
+AMC TO: 2025-12-31
+Services per year: 12
+Generated services: 1st of each month (Jan 1, Feb 1, Mar 1, etc.)
+
+
+================================================================================
+SECTION 2: SERVICE TYPES - THREE CATEGORIES
+================================================================================
+
+2.1 SERVICE (Regular AMC Services)
+-----------------------------------
+DESCRIPTION: Auto-generated scheduled maintenance services
+
+CURRENT STATE: Partially implemented
+CHANGES NEEDED:
+❌ Show in separate "Services" tab for technician
+❌ Maximum 3 technicians can join
+❌ Track joined_technician_ids array
+❌ COLOR CODING based on overdue status:
+   - RED (High Priority): Due date < current_date - 10 days
+   - YELLOW (Warning): Due date = current_date ± 2 days
+   - GREEN (Normal): Future services
+❌ TECHNICIAN RESTRICTIONS:
+   - Can complete services in range: [past_pending, today, today+7 days]
+   - Cannot start services beyond 7 days in future
+   - Must complete overdue services first (suggested)
+
+FIELDS:
+- service_type = "SERVICE"
+- max_technicians = 3
+- joined_technicians = [tech_id1, tech_id2, tech_id3]
+- priority_color = calculated
+- allowed_date_range = [calculated]
+
+
+2.2 CALLBACK (Admin Created Urgent Requests)
+----------------------------------------------
+DESCRIPTION: Admin creates callback for urgent customer requests
+
+NEW FEATURE - FULL IMPLEMENTATION NEEDED:
+
+ADMIN SIDE:
+❌ Add "Create Callback" button on admin dashboard
+❌ Callback creation form:
+   - Customer dropdown (ONLY Active AMC customers)
+   - Issue/Reason (Text area)
+   - Priority (Dropdown: High, Medium, Low)
+   - Notes (Optional text area)
+   - Assign technician (Optional - can be picked by technician)
+❌ VALIDATION:
+   - Block callback creation if customer AMC status != "Active"
+   - Show error: "Cannot create callback for inactive customer"
+
+TECHNICIAN SIDE:
+❌ New "Callbacks" tab in bottom navigation
+❌ List all callbacks (Pending, In Progress)
+❌ Callback card shows:
+   - Customer name, location
+   - Issue description
+   - Priority badge
+   - Number of technicians joined (X/3)
+   - Created time, elapsed time
+❌ "Join Callback" button (if < 3 technicians)
+❌ "Start" button (if joined)
+❌ "Complete" button with form
+
+NOTIFICATION SYSTEM:
+❌ On creation: Push notification to all/assigned technicians
+❌ Reminder: Every 1 hour until status = "Responded" or "In Progress"
+❌ Stop reminders when technician clicks "Responded" or "Start"
+
+CALLBACK STATUSES:
+- Pending (just created)
+- Responded (technician acknowledged)
+- In Progress (technician started work)
+- Completed (work finished)
+
+DATABASE MODEL - Callback:
+- id (UUID)
+- customer_id (FK to customers)
+- created_by_admin_id (FK to users)
+- issue_description (Text)
+- priority (Enum: High/Medium/Low)
+- status (Enum: Pending/Responded/InProgress/Completed)
+- assigned_technician_ids (Array, max 3)
+- created_at (Timestamp)
+- responded_at (Timestamp, nullable)
+- started_at (Timestamp, nullable)
+- completed_at (Timestamp, nullable)
+- reminder_count (Integer)
+- last_reminder_sent_at (Timestamp)
+- notes (Text, nullable)
+
+
+2.3 REPAIR (Admin Created Repair Jobs)
+---------------------------------------
+DESCRIPTION: Admin creates repair work for any customer or non-customer
+
+NEW FEATURE - FULL IMPLEMENTATION NEEDED:
+
+ADMIN SIDE:
+❌ Add "Create Repair" button on admin dashboard
+❌ Repair creation form:
+   - Customer dropdown (ALL customers: Active, Inactive, Non-AMC) OR
+   - New customer option (for one-time repair, no AMC)
+   - Issue description (Text area)
+   - Estimated cost (Decimal)
+   - Priority (High, Medium, Low)
+   - Parts required (Optional text)
+   - Notes (Optional)
+❌ NO RESTRICTIONS: Can create repair for anyone
+
+TECHNICIAN SIDE:
+❌ New "Repairs" tab in bottom navigation
+❌ List all repairs (Created, In Progress)
+❌ Repair card shows:
+   - Customer name or "Non-AMC Customer"
+   - Issue description
+   - Estimated cost
+   - Number of technicians joined (no limit)
+   - Created time
+❌ "Join Repair" button (UNLIMITED technicians)
+❌ "Start" button (if joined)
+❌ "Complete" button with form:
+   - Actual cost
+   - Parts used (text)
+   - Labor hours
+   - Notes
+
+REPAIR STATUSES:
+- Created (just created by admin)
+- In Progress (at least 1 technician started)
+- Completed (work finished)
+- Billed (admin marked as billed to customer)
+
+DATABASE MODEL - Repair:
+- id (UUID)
+- customer_id (FK, nullable for non-AMC)
+- customer_name (Text, for non-AMC customers)
+- customer_phone (Text, for non-AMC customers)
+- created_by_admin_id (FK to users)
+- issue_description (Text)
+- estimated_cost (Decimal)
+- actual_cost (Decimal, nullable)
+- priority (Enum: High/Medium/Low)
+- status (Enum: Created/InProgress/Completed/Billed)
+- joined_technician_ids (Array, unlimited)
+- parts_used (JSON or Text)
+- labor_hours (Decimal, nullable)
+- created_at (Timestamp)
+- started_at (Timestamp, nullable)
+- completed_at (Timestamp, nullable)
+- notes (Text, nullable)
+
+
+================================================================================
+SECTION 3: TECHNICIAN MOBILE APP CHANGES
+================================================================================
+
+3.1 BOTTOM NAVIGATION UPDATE
+-----------------------------
+CURRENT: Dashboard, Services, History, Profile
+
+NEW STRUCTURE:
+- Dashboard (home screen with summary)
+- Services (AMC scheduled services only)
+- Callbacks (urgent callback requests)
+- Repairs (repair jobs)
+- Profile (technician profile & logout)
+
+IMPLEMENTATION:
+- Update TechnicianNavigator.js
+- Create new screen: CallbacksScreen.js
+- Create new screen: RepairsScreen.js
+- Update icons for each tab
+
+
+3.2 SERVICES TAB ENHANCEMENTS
+------------------------------
+❌ Filter options:
+   - Show All
+   - Today
+   - Overdue (red)
+   - Upcoming (next 7 days)
+
+❌ Service card color coding:
+   - Red background/border: overdue > 10 days
+   - Yellow: due within 2 days
+   - Green: future services
+
+❌ Technician counter: "2/3 technicians assigned"
+
+❌ "Join Service" button appears if:
+   - Service status = Pending or Scheduled
+   - Current technician not already joined
+   - Joined technicians < 3
+
+❌ Date range restriction:
+   - Grey out services beyond today + 7 days
+   - Show tooltip: "Service date too far ahead"
+   - Allow: All overdue + today + next 7 days
+
+
+3.3 CALLBACKS TAB (NEW)
+------------------------
+❌ List view with callback cards
+❌ Sort by: Priority (High first), then Created time
+❌ Card shows:
+   - Customer name & location
+   - Issue description (truncated)
+   - Priority badge (color coded)
+   - Time elapsed since creation
+   - Technician count (X/3)
+   - Status badge
+
+❌ Actions:
+   - "View Details" → Full callback details
+   - "Join" → Add current technician to callback
+   - "Respond" → Mark as responded (stops reminders)
+   - "Start" → Begin work (status → In Progress)
+   - "Complete" → Finish callback with notes
+
+❌ Reminder notification:
+   - Show notification badge on Callbacks tab
+   - Play sound every hour for pending callbacks
+
+
+3.4 REPAIRS TAB (NEW)
+----------------------
+❌ List view with repair cards
+❌ Sort by: Priority, then Created time
+❌ Card shows:
+   - Customer name (or "Non-AMC Customer")
+   - Issue description
+   - Estimated cost
+   - Number of technicians joined (no limit indicator)
+   - Status badge
+
+❌ Actions:
+   - "View Details" → Full repair details
+   - "Join" → Add current technician to repair (no limit)
+   - "Start" → Begin work
+   - "Update Progress" → Add notes, upload images
+   - "Complete" → Finish with actual cost, parts used, hours
+
+
+================================================================================
+SECTION 4: ADMIN DASHBOARD ADDITIONS
+================================================================================
+
+4.1 QUICK ACTION BUTTONS
+-------------------------
+CURRENT: View Customers, Services, Reports, Technicians
+
+ADD NEW BUTTONS:
+❌ "Create Callback" (Primary button - blue, prominent)
+   - Opens callback creation modal/screen
+   - Shows customer dropdown (Active AMC only)
+
+❌ "Create Repair" (Secondary button - orange, prominent)
+   - Opens repair creation modal/screen
+   - Shows customer dropdown (all) + option for non-customer
+
+LAYOUT:
+- Place new buttons at top of Quick Actions section
+- Create Callback: Full width, primary color
+- Create Repair: Full width, warning color
+- Keep existing buttons below
+
+
+4.2 CUSTOMER LIST ENHANCEMENTS
+-------------------------------
+❌ Add columns/badges:
+   - AMC Status badge (color coded)
+   - AMC Expiry Date
+   - Next Service Due Date
+   - Outstanding Amount (AMC amount - received)
+
+❌ Filter options:
+   - All Customers
+   - Active AMC Only
+   - Expiring Soon (< 30 days)
+   - Inactive
+   - Overdue Services
+
+❌ Customer card improvements:
+   - Show AMC status badge prominently
+   - Red warning if expiring soon
+   - Show count of pending services
+
+
+4.3 CALLBACKS MANAGEMENT (NEW)
+-------------------------------
+❌ New screen: "Manage Callbacks"
+❌ List all callbacks with status
+❌ Filter by: Status, Priority, Technician, Date
+❌ Actions:
+   - View details
+   - Reassign technician
+   - Cancel callback
+   - View history
+
+
+4.4 REPAIRS MANAGEMENT (NEW)
+-----------------------------
+❌ New screen: "Manage Repairs"
+❌ List all repairs with status
+❌ Filter by: Status, Priority, Customer, Date
+❌ Actions:
+   - View details
+   - Update estimated cost
+   - Mark as billed
+   - View history
+
+
+================================================================================
+SECTION 5: DATABASE SCHEMA CHANGES
+================================================================================
+
+5.1 CUSTOMER MODEL UPDATES
+---------------------------
+ADD FIELDS:
+- amc_valid_from (Date)
+- amc_valid_to (Date)
+- amc_services_per_year (Integer, choices: [6, 9, 10, 12])
+- amc_amount (Decimal(10,2))
+- amc_amount_received (Decimal(10,2), default=0)
+- amc_amount_balance (Decimal(10,2), computed)
+- amc_status (Enum: 'Active', 'Inactive', 'Expiring Soon', default='Inactive')
+- door_type (String, nullable)
+- controller_type (String, nullable)
+- number_of_floors (Integer, nullable)
+- building_type (String, nullable)
+- lift_capacity (String, nullable)
+- installation_date (Date, nullable)
+- warranty_expiry_date (Date, nullable)
+- previous_maintenance_company (String, nullable)
+
+
+5.2 NEW MODEL: CALLBACKS
+-------------------------
+CREATE TABLE: callbacks
+
+FIELDS:
+- id (UUID, Primary Key)
+- customer_id (UUID, Foreign Key → customers, required)
+- created_by_admin_id (UUID, Foreign Key → users, required)
+- issue_description (Text, required)
+- priority (Enum: 'High', 'Medium', 'Low', default='Medium')
+- status (Enum: 'Pending', 'Responded', 'InProgress', 'Completed', default='Pending')
+- assigned_technician_ids (JSON Array, max 3 items)
+- created_at (Timestamp, auto)
+- responded_at (Timestamp, nullable)
+- started_at (Timestamp, nullable)
+- completed_at (Timestamp, nullable)
+- reminder_count (Integer, default=0)
+- last_reminder_sent_at (Timestamp, nullable)
+- notes (Text, nullable)
+- completion_notes (Text, nullable)
+
+INDEXES:
+- customer_id
+- status
+- created_at
+- priority
+
+
+5.3 NEW MODEL: REPAIRS
+-----------------------
+CREATE TABLE: repairs
+
+FIELDS:
+- id (UUID, Primary Key)
+- customer_id (UUID, Foreign Key → customers, nullable)
+- customer_name (String, nullable, for non-AMC)
+- customer_phone (String, nullable, for non-AMC)
+- customer_address (Text, nullable, for non-AMC)
+- created_by_admin_id (UUID, Foreign Key → users, required)
+- issue_description (Text, required)
+- estimated_cost (Decimal(10,2), required)
+- actual_cost (Decimal(10,2), nullable)
+- priority (Enum: 'High', 'Medium', 'Low', default='Medium')
+- status (Enum: 'Created', 'InProgress', 'Completed', 'Billed', default='Created')
+- joined_technician_ids (JSON Array, unlimited)
+- parts_used (Text or JSON, nullable)
+- labor_hours (Decimal(5,2), nullable)
+- created_at (Timestamp, auto)
+- started_at (Timestamp, nullable)
+- completed_at (Timestamp, nullable)
+- billed_at (Timestamp, nullable)
+- notes (Text, nullable)
+- completion_notes (Text, nullable)
+- images (JSON Array of image URLs, nullable)
+
+INDEXES:
+- customer_id
+- status
+- created_at
+- priority
+
+
+5.4 SERVICE_SCHEDULES MODEL UPDATES
+------------------------------------
+ADD FIELDS:
+- service_type (Enum: 'SERVICE', 'CALLBACK', 'REPAIR', default='SERVICE')
+- max_technicians (Integer, nullable, 3 for SERVICE/CALLBACK)
+- joined_technician_ids (JSON Array)
+- priority_level (Integer, computed: days overdue)
+- priority_color (String, computed: 'red', 'yellow', 'green')
+- is_allowed_to_complete (Boolean, computed)
+
+
+================================================================================
+SECTION 6: BACKEND API ENDPOINTS TO CREATE
+================================================================================
+
+6.1 CUSTOMER ENDPOINTS (UPDATE)
+--------------------------------
+PUT /api/v1/customers/{id}
+- Add new AMC fields to update
+- Trigger auto-service generation if AMC dates change
+
+POST /api/v1/customers/{id}/amc
+- Create/Update AMC contract
+- Auto-generate services
+
+
+6.2 CALLBACK ENDPOINTS (NEW)
+-----------------------------
+POST /api/v1/callbacks
+- Create new callback
+- Validate customer is Active
+- Return callback object
+
+GET /api/v1/callbacks
+- List all callbacks
+- Filter by: status, priority, customer, technician
+- Sort by: created_at, priority
+
+GET /api/v1/callbacks/{id}
+- Get single callback details
+
+PUT /api/v1/callbacks/{id}/join
+- Add current technician to callback
+- Validate max 3 technicians
+
+PUT /api/v1/callbacks/{id}/respond
+- Mark callback as responded
+- Stop reminders
+
+PUT /api/v1/callbacks/{id}/start
+- Mark callback as In Progress
+
+PUT /api/v1/callbacks/{id}/complete
+- Mark callback as completed
+- Accept completion notes
+
+GET /api/v1/technician/my-callbacks
+- Get callbacks for current technician
+
+
+6.3 REPAIR ENDPOINTS (NEW)
+---------------------------
+POST /api/v1/repairs
+- Create new repair
+- Allow null customer_id for non-AMC
+
+GET /api/v1/repairs
+- List all repairs
+- Filter by: status, priority, customer
+
+GET /api/v1/repairs/{id}
+- Get single repair details
+
+PUT /api/v1/repairs/{id}/join
+- Add current technician (unlimited)
+
+PUT /api/v1/repairs/{id}/start
+- Mark repair as In Progress
+
+PUT /api/v1/repairs/{id}/complete
+- Mark repair as completed
+- Accept: actual_cost, parts_used, labor_hours, notes
+
+PUT /api/v1/repairs/{id}/bill
+- Admin marks repair as billed
+
+GET /api/v1/technician/my-repairs
+- Get repairs for current technician
+
+
+6.4 SERVICE ENDPOINTS (UPDATE)
+-------------------------------
+GET /api/v1/technician/my-services
+- Add date range filter
+- Add priority_color in response
+- Add is_allowed_to_complete flag
+
+PUT /api/v1/services/{id}/join
+- Add current technician to service
+- Validate max 3 technicians
+
+
+6.5 BACKGROUND JOBS (NEW)
+--------------------------
+CRON JOB: Update AMC Status (Daily at 00:01)
+- Check all customers
+- Update amc_status based on dates
+
+CRON JOB: Send Callback Reminders (Every hour)
+- Find callbacks with status = 'Pending' or 'Responded'
+- Send push notification to assigned technicians
+- Update reminder_count and last_reminder_sent_at
+
+
+================================================================================
+SECTION 7: NOTIFICATION SYSTEM
+================================================================================
+
+7.1 PUSH NOTIFICATIONS TO IMPLEMENT
+------------------------------------
+❌ CALLBACK CREATED:
+   - To: All technicians or assigned technicians
+   - Title: "New Callback Request"
+   - Body: "Urgent callback for [Customer Name] - [Issue]"
+   - Action: Open Callbacks tab
+
+❌ CALLBACK REMINDER (Hourly):
+   - To: Assigned technicians
+   - Title: "Pending Callback Reminder"
+   - Body: "[X] hours elapsed - [Customer Name]"
+   - Action: Open specific callback
+
+❌ REPAIR CREATED:
+   - To: All technicians
+   - Title: "New Repair Job"
+   - Body: "Repair needed for [Customer Name/Non-AMC]"
+   - Action: Open Repairs tab
+
+❌ SERVICE OVERDUE (Daily):
+   - To: Assigned technicians
+   - Title: "Overdue Service"
+   - Body: "[X] days overdue - [Customer Name]"
+   - Action: Open specific service
+
+❌ AMC EXPIRING SOON:
+   - To: Admin
+   - Title: "AMC Expiring Soon"
+   - Body: "[Customer Name] AMC expires on [Date]"
+   - Action: Open customer details
+
+IMPLEMENTATION:
+- Use Expo Push Notifications
+- Store device tokens in user table
+- Backend service to send notifications
+
+
+================================================================================
+SECTION 8: IMPLEMENTATION PHASES
+================================================================================
+
+PHASE 1: CRITICAL FEATURES (Week 1)
+------------------------------------
+Priority: HIGH
+Estimated time: 20-25 hours
+
+✓ 1.1 Update Customer model with AMC fields (Backend)
+✓ 1.2 Update Customer form to include all new fields (Frontend)
+✓ 1.3 Create Callback model and API endpoints (Backend)
+✓ 1.4 Create Callback screens for Admin (Frontend)
+✓ 1.5 Create Callback screens for Technician (Frontend)
+✓ 1.6 Create Repair model and API endpoints (Backend)
+✓ 1.7 Create Repair screens for Admin (Frontend)
+✓ 1.8 Create Repair screens for Technician (Frontend)
+✓ 1.9 Update Technician navigation tabs (Frontend)
+
+
+PHASE 2: AUTOMATION & BUSINESS LOGIC (Week 2)
+----------------------------------------------
+Priority: HIGH
+Estimated time: 15-20 hours
+
+✓ 2.1 Implement AMC status auto-update cron job (Backend)
+✓ 2.2 Implement auto service generation from AMC (Backend)
+✓ 2.3 Implement service date range restrictions (Frontend + Backend)
+✓ 2.4 Implement multi-technician support (max 3 for service/callback) (Backend + Frontend)
+✓ 2.5 Implement color coding for overdue services (Frontend)
+✓ 2.6 Implement service priority calculation (Backend)
+
+
+PHASE 3: NOTIFICATIONS & REMINDERS (Week 3)
+--------------------------------------------
+Priority: MEDIUM
+Estimated time: 10-15 hours
+
+✓ 3.1 Set up Expo Push Notification service (Backend + Frontend)
+✓ 3.2 Implement callback creation notification (Backend)
+✓ 3.3 Implement hourly callback reminders cron job (Backend)
+✓ 3.4 Implement repair creation notification (Backend)
+✓ 3.5 Implement overdue service notifications (Backend)
+✓ 3.6 Implement AMC expiring notification to admin (Backend)
+✓ 3.7 Frontend notification handling and deep linking (Frontend)
+
+
+PHASE 4: ENHANCEMENTS & POLISH (Week 4)
+----------------------------------------
+Priority: MEDIUM-LOW
+Estimated time: 10-12 hours
+
+✓ 4.1 Add Excel fields (door type, controller, floors) (Frontend + Backend)
+✓ 4.2 Implement partial payment tracking (Frontend + Backend)
+✓ 4.3 Enhanced customer list with AMC info (Frontend)
+✓ 4.4 Callback management for Admin (Frontend)
+✓ 4.5 Repair management for Admin (Frontend)
+✓ 4.6 Reports and analytics updates (Frontend + Backend)
+
+
+PHASE 5: TESTING & OPTIMIZATION (Week 5)
+-----------------------------------------
+Priority: HIGH
+Estimated time: 8-10 hours
+
+✓ 5.1 End-to-end testing of all features
+✓ 5.2 Performance optimization
+✓ 5.3 Bug fixes
+✓ 5.4 User acceptance testing
+✓ 5.5 Documentation updates
+
+
+================================================================================
+SECTION 9: TESTING CHECKLIST
+================================================================================
+
+CUSTOMER MANAGEMENT:
+[ ] Create customer with all AMC fields
+[ ] Verify auto service generation (check dates match interval)
+[ ] Update AMC dates and verify services regenerate
+[ ] Verify AMC status changes after expiry
+[ ] Test partial payment tracking
+[ ] Test customer with inactive AMC cannot get callback
+
+SERVICE MANAGEMENT:
+[ ] Verify auto-generated services appear in technician app
+[ ] Test color coding: red for >10 days overdue, yellow for due soon
+[ ] Test date range restriction (can't complete future services)
+[ ] Test multi-technician join (max 3)
+[ ] Test service completion flow
+
+CALLBACK MANAGEMENT:
+[ ] Admin creates callback for Active customer - Success
+[ ] Admin creates callback for Inactive customer - Blocked
+[ ] Technician receives notification
+[ ] Technician joins callback (up to 3)
+[ ] Verify hourly reminders are sent
+[ ] Reminders stop after "Responded"
+[ ] Complete callback and verify status
+
+REPAIR MANAGEMENT:
+[ ] Admin creates repair for Active customer
+[ ] Admin creates repair for Inactive customer
+[ ] Admin creates repair for non-customer
+[ ] Unlimited technicians can join
+[ ] Complete repair with actual cost and parts
+[ ] Admin marks as billed
+
+NOTIFICATIONS:
+[ ] Callback creation notification
+[ ] Hourly callback reminders
+[ ] Repair creation notification
+[ ] Overdue service notification
+[ ] AMC expiring notification to admin
+
+EDGE CASES:
+[ ] AMC period exactly 30 days past expiry
+[ ] Service scheduled on Feb 29 (leap year)
+[ ] Customer with 0 services per year
+[ ] Callback with no assigned technician
+[ ] Repair with 10+ technicians
+
+
+================================================================================
+SECTION 10: NOTES & CONSIDERATIONS
+================================================================================
+
+PERFORMANCE CONSIDERATIONS:
+- Auto service generation: Use background job for large batches
+- Notification sending: Queue system for bulk notifications
+- Service list: Paginate if > 100 services
+- Callback reminders: Batch process every hour
+
+SECURITY CONSIDERATIONS:
+- Technicians cannot create callbacks/repairs (admin only)
+- Technicians can only view their assigned services/callbacks/repairs
+- Admin cannot join services (view only)
+- Validate customer AMC status before callback creation
+
+UI/UX CONSIDERATIONS:
+- Clear visual distinction between Service/Callback/Repair tabs
+- Prominent color coding for priorities
+- Easy access to "Create Callback/Repair" for admin
+- Push notification with sound for callbacks
+- Confirmation dialogs for critical actions
+
+DATA MIGRATION:
+- Existing customers: Set default AMC status = 'Inactive'
+- Existing services: Set service_type = 'SERVICE'
+- Existing services: Set max_technicians = 3
+
+
+================================================================================
+END OF DOCUMENT
+================================================================================
+
+Last Updated: October 17, 2025
+Version: 1.0
+Status: Ready for Implementation

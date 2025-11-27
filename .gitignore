@@ -58,8 +58,8 @@ logs/
 dist/
 build/
 
-# Mobile app (separate repository)
-legendlift-mobile/
+# Mobile app now included in this repository
+# legendlift-mobile/
 
 # Temporary files
 *.tmp.*
