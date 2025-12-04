@@ -67,7 +67,7 @@ const ServiceHistoryScreen = ({ navigation }) => {
   if (loading) {
     return (
       <View style={styles.container}>
-        <Header title="Service History" showBack={false} />
+        <Header title="Service History" showBack={true} onBackPress={() => navigation.goBack()} />
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" color={COLORS.primary} />
         </View>
@@ -77,7 +77,7 @@ const ServiceHistoryScreen = ({ navigation }) => {
 
   return (
     <View style={styles.container}>
-      <Header title="Service History" showBack={false} />
+      <Header title="Service History" showBack={true} onBackPress={() => navigation.goBack()} />
 
       <ScrollView
         style={styles.content}

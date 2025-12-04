@@ -9,3 +9,4 @@ export { default as Loading } from './Loading';
 export { default as GradientButton } from './GradientButton';
 export { default as ModernCard } from './ModernCard';
 export { default as ModernInput } from './ModernInput';
+export { default as ImageViewer } from './ImageViewer';

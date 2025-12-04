@@ -153,16 +153,16 @@ const AdminDashboardScreen = ({ navigation }) => {
 // Map icon names to emojis
 const getIconEmoji = (iconName) => {
   const emojiMap = {
-    'users': '👥',
-    'user-check': '✅',
-    'briefcase': '💼',
-    'check-circle': '✔️',
-    'phone': '📞',
-    'phone-check': '☑️',
+    'users': '🧑‍💼',
+    'user-check': '🌟',
+    'briefcase': '📊',
+    'check-circle': '✅',
+    'phone': '📲',
+    'phone-check': '💬',
     'tool': '🔧',
-    'check-square': '✅',
+    'check-square': '✔️',
     'file-text': '📄',
-    'file-check': '📋',
+    'file-check': '✅',
   };
   return emojiMap[iconName] || '📊';
 };

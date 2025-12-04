@@ -60,8 +60,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: SIZES.paddingMD,
-    paddingVertical: 18,
-    minHeight: 70,
+    paddingVertical: 12,
+    minHeight: 56,
   },
   leftContainer: {
     width: 40,

@@ -2,6 +2,8 @@ import React from 'react';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { Ionicons } from '@expo/vector-icons';
+import { Platform } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { COLORS } from '../constants/theme';
 
 // Import screens
@@ -18,10 +20,13 @@ const Stack = createNativeStackNavigator();
 
 // Main Tab Navigator
 const TechnicianTabs = () => {
+  const insets = useSafeAreaInsets();
+
   return (
     <Tab.Navigator
       screenOptions={({ route }) => ({
         headerShown: false,
+        tabBarHideOnKeyboard: true,
         tabBarIcon: ({ focused, color, size }) => {
           let iconName;
 
@@ -42,8 +47,8 @@ const TechnicianTabs = () => {
         tabBarActiveTintColor: COLORS.primary,
         tabBarInactiveTintColor: COLORS.grey600,
         tabBarStyle: {
-          height: 75,
-          paddingBottom: 15,
+          height: 60 + insets.bottom,
+          paddingBottom: insets.bottom,
           paddingTop: 8,
           backgroundColor: '#fff',
           borderTopWidth: 1,
@@ -57,6 +62,7 @@ const TechnicianTabs = () => {
         tabBarLabelStyle: {
           fontSize: 12,
           fontWeight: '600',
+          marginBottom: 4,
         },
       })}
     >

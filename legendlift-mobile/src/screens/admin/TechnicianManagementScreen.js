@@ -11,6 +11,7 @@ import {
   ActivityIndicator,
 } from 'react-native';
 import { useSelector } from 'react-redux';
+import { Ionicons } from '@expo/vector-icons';
 import { Card, Button } from '../../components/common';
 import { THEME as theme } from '../../constants/theme';
 import { API_CONFIG } from '../../constants';
@@ -146,9 +147,9 @@ const TechnicianManagementScreen = ({ navigation }) => {
     <Card key={technician.id} style={styles.techCard}>
       <View style={styles.techHeader}>
         <View style={styles.techInfo}>
-          <Text style={styles.techName}>{technician.name}</Text>
-          <Text style={styles.techEmail}>{technician.email}</Text>
-          <Text style={styles.techPhone}>{technician.phone}</Text>
+          <Text style={styles.techName} numberOfLines={1} ellipsizeMode="tail">{technician.name}</Text>
+          <Text style={styles.techEmail} numberOfLines={1} ellipsizeMode="tail">{technician.email}</Text>
+          <Text style={styles.techPhone} numberOfLines={1}>{technician.phone}</Text>
         </View>
         <View style={styles.statusBadge}>
           <View
@@ -200,8 +201,16 @@ const TechnicianManagementScreen = ({ navigation }) => {
   return (
     <View style={styles.container}>
       <View style={styles.header}>
-        <Text style={styles.title}>Technician Management</Text>
-        <Text style={styles.subtitle}>Manage app access</Text>
+        <TouchableOpacity
+          style={styles.backButton}
+          onPress={() => navigation.goBack()}
+        >
+          <Ionicons name="arrow-back" size={24} color={theme.colors.text} />
+        </TouchableOpacity>
+        <View style={styles.headerTextContainer}>
+          <Text style={styles.title}>Technician Management</Text>
+          <Text style={styles.subtitle}>Manage app access</Text>
+        </View>
       </View>
 
       <View style={styles.addButtonContainer}>
@@ -334,8 +343,17 @@ const styles = StyleSheet.create({
     backgroundColor: theme.colors.background,
   },
   header: {
+    flexDirection: 'row',
+    alignItems: 'center',
     padding: 20,
     backgroundColor: theme.colors.primary,
+  },
+  backButton: {
+    marginRight: 15,
+    padding: 5,
+  },
+  headerTextContainer: {
+    flex: 1,
   },
   title: {
     fontSize: 24,
@@ -407,6 +425,7 @@ const styles = StyleSheet.create({
   },
   techInfo: {
     flex: 1,
+    marginRight: 15,
   },
   techName: {
     fontSize: 18,

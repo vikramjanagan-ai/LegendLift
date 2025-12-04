@@ -11,7 +11,7 @@ import {
   TextInput,
 } from 'react-native';
 import { useSelector } from 'react-redux';
-import { Card, Header } from '../../components/common';
+import { Card, Header, ImageViewer } from '../../components/common';
 import { THEME as theme } from '../../constants/theme';
 import { API_CONFIG } from '../../constants';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
@@ -22,16 +22,19 @@ const ServiceDetailsScreen = ({ route, navigation }) => {
   const { token } = useSelector((state) => state.auth);
   const [loading, setLoading] = useState(true);
   const [service, setService] = useState(null);
+  const [serviceReports, setServiceReports] = useState([]);
   const [showAssignModal, setShowAssignModal] = useState(false);
   const [showRescheduleModal, setShowRescheduleModal] = useState(false);
   const [technicians, setTechnicians] = useState([]);
   const [techniciansWorkload, setTechniciansWorkload] = useState({});
   const [selectedTechnician, setSelectedTechnician] = useState(null);
+  const [technicianSearchQuery, setTechnicianSearchQuery] = useState('');
   const [newScheduledDate, setNewScheduledDate] = useState(new Date());
   const [showDatePicker, setShowDatePicker] = useState(false);
 
   useEffect(() => {
     fetchServiceDetails();
+    fetchServiceReports();
   }, [serviceId]);
 
   const fetchServiceDetails = async () => {
@@ -51,6 +54,24 @@ const ServiceDetailsScreen = ({ route, navigation }) => {
       console.error('Error fetching service details:', error);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const fetchServiceReports = async () => {
+    try {
+      const response = await fetch(`${API_CONFIG.BASE_URL}/services/reports?service_id=${serviceId}`, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        setServiceReports(Array.isArray(data) ? data : []);
+      }
+    } catch (error) {
+      console.error('Error fetching service reports:', error);
     }
   };
 
@@ -95,6 +116,18 @@ const ServiceDetailsScreen = ({ route, navigation }) => {
     } catch (error) {
       console.error('Error fetching technicians:', error);
     }
+  };
+
+  const getFilteredTechnicians = () => {
+    if (!technicianSearchQuery.trim()) {
+      return technicians;
+    }
+    const query = technicianSearchQuery.toLowerCase();
+    return technicians.filter(tech =>
+      tech.name?.toLowerCase().includes(query) ||
+      tech.email?.toLowerCase().includes(query) ||
+      tech.phone?.includes(query)
+    );
   };
 
   const handleAssignTechnician = async () => {
@@ -352,6 +385,41 @@ const ServiceDetailsScreen = ({ route, navigation }) => {
           )}
         </Card>
 
+        {/* Service Report Images */}
+        {serviceReports.length > 0 && serviceReports.some(report => report.images && report.images.length > 0) && (
+          <Card style={styles.section}>
+            <View style={styles.sectionHeader}>
+              <Icon name="image-multiple" size={24} color={theme.colors.primary} />
+              <Text style={styles.sectionTitle}>Service Completion Images</Text>
+            </View>
+
+            {serviceReports.map((report, index) => {
+              const images = Array.isArray(report.images) ? report.images :
+                             (report.images ? JSON.parse(report.images) : []);
+
+              if (images.length === 0) return null;
+
+              return (
+                <View key={report.id || index} style={{ marginTop: index > 0 ? 16 : 0 }}>
+                  {report.work_done && (
+                    <Text style={styles.reportLabel}>Work Done: {report.work_done}</Text>
+                  )}
+                  <ImageViewer
+                    images={images}
+                    title={`Service Report ${index + 1}`}
+                    emptyMessage="No images uploaded"
+                  />
+                  {report.completion_time && (
+                    <Text style={styles.reportDate}>
+                      Completed: {formatDate(report.completion_time)}
+                    </Text>
+                  )}
+                </View>
+              );
+            })}
+          </Card>
+        )}
+
         {/* Action Buttons */}
         {service.status?.toUpperCase() !== 'COMPLETED' && (
           <View style={styles.actionButtonsContainer}>
@@ -404,6 +472,7 @@ const ServiceDetailsScreen = ({ route, navigation }) => {
                 onPress={() => {
                   setShowAssignModal(false);
                   setSelectedTechnician(null);
+                  setTechnicianSearchQuery('');
                 }}
               >
                 <Icon name="arrow-left" size={24} color={theme.colors.textPrimary} />
@@ -414,14 +483,40 @@ const ServiceDetailsScreen = ({ route, navigation }) => {
                 onPress={() => {
                   setShowAssignModal(false);
                   setSelectedTechnician(null);
+                  setTechnicianSearchQuery('');
                 }}
               >
                 <Icon name="close" size={24} color={theme.colors.textPrimary} />
               </TouchableOpacity>
             </View>
 
+            {/* Search Input */}
+            <View style={styles.searchContainer}>
+              <Icon name="magnify" size={20} color={theme.colors.textSecondary} style={styles.searchIcon} />
+              <TextInput
+                style={styles.searchInput}
+                placeholder="Search by name, email, or phone..."
+                value={technicianSearchQuery}
+                onChangeText={setTechnicianSearchQuery}
+                placeholderTextColor={theme.colors.textSecondary}
+              />
+              {technicianSearchQuery !== '' && (
+                <TouchableOpacity onPress={() => setTechnicianSearchQuery('')}>
+                  <Icon name="close-circle" size={20} color={theme.colors.textSecondary} />
+                </TouchableOpacity>
+              )}
+            </View>
+
             <ScrollView style={styles.techniciansList}>
-              {technicians.map((tech) => (
+              {getFilteredTechnicians().length === 0 ? (
+                <View style={styles.emptySearchContainer}>
+                  <Icon name="account-search" size={48} color={theme.colors.textSecondary} />
+                  <Text style={styles.emptySearchText}>
+                    {technicianSearchQuery ? 'No technicians found' : 'No technicians available'}
+                  </Text>
+                </View>
+              ) : (
+                getFilteredTechnicians().map((tech) => (
                 <TouchableOpacity
                   key={tech.id}
                   style={[
@@ -446,7 +541,8 @@ const ServiceDetailsScreen = ({ route, navigation }) => {
                     <Text style={styles.serviceCountLabel}>services</Text>
                   </View>
                 </TouchableOpacity>
-              ))}
+              ))
+              )}
             </ScrollView>
 
             <View style={styles.modalFooter}>
@@ -626,10 +722,40 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 20,
+    marginBottom: 16,
     paddingBottom: 12,
     borderBottomWidth: 1,
     borderBottomColor: theme.colors.border,
+  },
+  searchContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: theme.colors.background,
+    borderWidth: 1,
+    borderColor: theme.colors.border,
+    borderRadius: 8,
+    paddingHorizontal: 12,
+    marginBottom: 16,
+  },
+  searchIcon: {
+    marginRight: 8,
+  },
+  searchInput: {
+    flex: 1,
+    paddingVertical: 12,
+    fontSize: 14,
+    color: theme.colors.text,
+  },
+  emptySearchContainer: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 60,
+  },
+  emptySearchText: {
+    fontSize: 16,
+    color: theme.colors.textSecondary,
+    marginTop: 16,
+    textAlign: 'center',
   },
   modalTitle: {
     fontSize: 20,
@@ -751,6 +877,18 @@ const styles = StyleSheet.create({
     color: theme.colors.text,
     fontSize: 16,
     fontWeight: '600',
+  },
+  reportLabel: {
+    fontSize: 14,
+    fontWeight: '500',
+    color: theme.colors.text,
+    marginBottom: 8,
+  },
+  reportDate: {
+    fontSize: 12,
+    color: theme.colors.textSecondary,
+    marginTop: 8,
+    fontStyle: 'italic',
   },
 });
 

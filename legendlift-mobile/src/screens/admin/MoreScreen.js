@@ -48,7 +48,7 @@ const MoreScreen = ({ navigation }) => {
 
   return (
     <View style={styles.container}>
-      <Header title="More" showBack={false} />
+      <Header title="More" showBack={true} onBackPress={() => navigation.goBack()} />
       <ScrollView style={styles.content}>
         {/* User Info Card */}
         <Card style={styles.userCard}>

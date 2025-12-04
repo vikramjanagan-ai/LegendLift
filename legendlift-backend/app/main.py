@@ -2,7 +2,7 @@ from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import Response
 from app.core.config import settings
-from app.api.endpoints import auth, customers, services, technician_services, reports, admin_users, payments, complaints, callbacks, repairs, minor_points, dashboard
+from app.api.endpoints import auth, customers, services, technician_services, reports, admin_users, payments, complaints, callbacks, repairs, minor_points, dashboard, advanced_reports
 from app.db.session import engine, Base
 from starlette.middleware.base import BaseHTTPMiddleware
 
@@ -49,6 +49,7 @@ app.include_router(payments.router, prefix=f"{settings.API_V1_STR}/payments", ta
 app.include_router(complaints.router, prefix=f"{settings.API_V1_STR}/complaints", tags=["complaints"])
 app.include_router(minor_points.router, prefix=f"{settings.API_V1_STR}/minor-points", tags=["minor-points"])
 app.include_router(dashboard.router, prefix=f"{settings.API_V1_STR}/dashboard", tags=["dashboard"])
+app.include_router(advanced_reports.router, prefix=f"{settings.API_V1_STR}/reports", tags=["advanced-reports"])
 
 
 @app.get("/")

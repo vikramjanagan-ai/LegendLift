@@ -50,24 +50,35 @@ export const loadStoredAuth = createAsyncThunk(
   'auth/loadStoredAuth',
   async (_, { rejectWithValue }) => {
     try {
+      console.log('loadStoredAuth: Checking AsyncStorage...');
       const token = await AsyncStorage.getItem(STORAGE_KEYS.AUTH_TOKEN);
       const userData = await AsyncStorage.getItem(STORAGE_KEYS.USER_DATA);
 
       if (!token || !userData) {
+        console.log('loadStoredAuth: No stored auth data found');
         return rejectWithValue('No stored auth data');
       }
 
       const user = JSON.parse(userData);
+      console.log('loadStoredAuth: Found stored data, verifying token...');
 
       // Verify token is still valid
-      await api.get('/auth/me', {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      });
+      try {
+        await api.get('/auth/me', {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+          timeout: 5000, // 5 second timeout for initial auth check
+        });
+        console.log('loadStoredAuth: Token verified successfully');
+      } catch (apiError) {
+        console.log('loadStoredAuth: Token verification failed:', apiError.message);
+        throw apiError;
+      }
 
       return { token, user };
     } catch (error) {
+      console.log('loadStoredAuth: Error occurred, clearing stored auth');
       await AsyncStorage.multiRemove([
         STORAGE_KEYS.AUTH_TOKEN,
         STORAGE_KEYS.USER_DATA,

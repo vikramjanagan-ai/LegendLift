@@ -9,7 +9,7 @@ import {
   Alert,
 } from 'react-native';
 import { useSelector } from 'react-redux';
-import { Card, Header } from '../../components/common';
+import { Card, Header, ImageViewer } from '../../components/common';
 import { THEME as theme } from '../../constants/theme';
 import { API_CONFIG } from '../../constants';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
@@ -215,6 +215,35 @@ const CallBackDetailsScreen = ({ route, navigation }) => {
           </Card>
         )}
 
+        {/* Completion Images */}
+        {(callback.completion_images || callback.report_attachment_url) && (
+          <Card style={styles.section}>
+            <View style={styles.sectionHeader}>
+              <Icon name="image-multiple" size={24} color={theme.colors.primary} />
+              <Text style={styles.sectionTitle}>Completion Images</Text>
+            </View>
+
+            <ImageViewer
+              images={callback.completion_images || callback.report_attachment_url}
+              title="Callback Completion Photos"
+              emptyMessage="No completion images uploaded"
+            />
+
+            {callback.problem_solved && (
+              <View style={{ marginTop: 12, paddingTop: 12, borderTopWidth: 1, borderTopColor: '#e0e0e0' }}>
+                <Text style={styles.label}>Problem Solved</Text>
+                <Text style={styles.value}>{callback.problem_solved}</Text>
+              </View>
+            )}
+
+            {callback.completed_at && (
+              <Text style={styles.completionDate}>
+                Completed: {formatDate(callback.completed_at)}
+              </Text>
+            )}
+          </Card>
+        )}
+
         {/* Action Buttons */}
         {callback.status !== 'COMPLETED' && callback.status !== 'CANCELLED' && (
           <View style={styles.actionButtonsContainer}>
@@ -368,6 +397,12 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '600',
     marginLeft: 8,
+  },
+  completionDate: {
+    fontSize: 12,
+    color: theme.colors.textSecondary,
+    marginTop: 12,
+    fontStyle: 'italic',
   },
 });
 

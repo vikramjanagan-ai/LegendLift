@@ -65,6 +65,11 @@ const CallBacksScreen = ({ navigation }) => {
     }
   };
 
+  const getPriorityOrder = (priority) => {
+    const order = { urgent: 1, high: 2, medium: 3, low: 4 };
+    return order[priority?.toLowerCase()] || 5;
+  };
+
   const filterCallBacks = () => {
     let filtered = [...callbacks];
 
@@ -82,6 +87,9 @@ const CallBacksScreen = ({ navigation }) => {
     if (selectedStatus) {
       filtered = filtered.filter((callback) => callback.status === selectedStatus);
     }
+
+    // Sort by priority (urgent first, then high, medium, low)
+    filtered.sort((a, b) => getPriorityOrder(a.priority) - getPriorityOrder(b.priority));
 
     setFilteredCallbacks(filtered);
   };
@@ -136,7 +144,7 @@ const CallBacksScreen = ({ navigation }) => {
     setShowCallBackModal(true);
   };
 
-  const handleSubmitCallBack = async (callbackData, selectedTechnicians) => {
+  const handleSubmitCallBack = async (callbackData, selectedTechnicians = []) => {
     setSubmitting(true);
     try {
       const url = selectedCallBack
@@ -157,6 +165,7 @@ const CallBacksScreen = ({ navigation }) => {
       if (response.ok) {
         const savedCallback = await response.json();
 
+        // Handle technician assignments
         if (selectedCallBack) {
           // UPDATE: Sync technicians - add new, remove old
           const oldTechnicians = selectedCallBack.technicians || [];
@@ -189,8 +198,8 @@ const CallBacksScreen = ({ navigation }) => {
               },
             });
           }
-        } else {
-          // CREATE: Assign all selected technicians
+        } else if (selectedTechnicians.length > 0) {
+          // CREATE: Assign selected technicians if any
           for (const techId of selectedTechnicians) {
             await fetch(`${API_CONFIG.BASE_URL}/callbacks/${savedCallback.id}/assign`, {
               method: 'POST',
@@ -203,10 +212,13 @@ const CallBacksScreen = ({ navigation }) => {
           }
         }
 
-        Alert.alert(
-          'Success',
-          selectedCallBack ? 'CallBack updated successfully' : 'CallBack created successfully'
-        );
+        const message = selectedCallBack
+          ? 'CallBack updated successfully'
+          : selectedTechnicians.length > 0
+            ? `CallBack created and assigned to ${selectedTechnicians.length} technician(s)`
+            : 'CallBack created successfully. Technicians can now pick this job.';
+
+        Alert.alert('Success', message);
         setShowCallBackModal(false);
         fetchCallBacks();
       } else {
@@ -285,6 +297,26 @@ const CallBacksScreen = ({ navigation }) => {
     }
   };
 
+  const getPriorityColor = (priority) => {
+    const priorityLower = priority?.toLowerCase();
+    switch (priorityLower) {
+      case 'urgent':
+        return '#DC2626'; // Red
+      case 'high':
+        return '#EA580C'; // Orange
+      case 'medium':
+        return '#D97706'; // Amber
+      case 'low':
+        return '#059669'; // Green
+      default:
+        return theme.colors.textSecondary;
+    }
+  };
+
+  const getPriorityLabel = (priority) => {
+    return priority ? priority.charAt(0).toUpperCase() + priority.slice(1) : 'Medium';
+  };
+
   const renderCallBackCard = (callback) => (
     <TouchableOpacity
       key={callback.id}
@@ -293,7 +325,17 @@ const CallBacksScreen = ({ navigation }) => {
       <Card style={styles.callbackCard}>
         <View style={styles.cardHeader}>
           <View style={styles.callbackInfo}>
-            <Text style={styles.customerName}>{callback.customer_name}</Text>
+            <View style={styles.headerRow}>
+              <Text style={styles.customerName}>{callback.customer_name}</Text>
+              <View style={[
+                styles.priorityBadge,
+                { backgroundColor: getPriorityColor(callback.priority) }
+              ]}>
+                <Text style={styles.priorityText}>
+                  {getPriorityLabel(callback.priority)}
+                </Text>
+              </View>
+            </View>
             <Text style={styles.jobNo}>Job No: {callback.customer_job_number}</Text>
             <Text style={styles.scheduledDate}>
               <Icon name="calendar-clock" size={14} color={theme.colors.textSecondary} />
@@ -630,10 +672,28 @@ const styles = StyleSheet.create({
   callbackInfo: {
     flex: 1,
   },
+  headerRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginBottom: 4,
+  },
   customerName: {
     fontSize: 18,
     fontWeight: 'bold',
     color: theme.colors.text,
+    flex: 1,
+  },
+  priorityBadge: {
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 8,
+  },
+  priorityText: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#fff',
+    textTransform: 'uppercase',
   },
   jobNo: {
     fontSize: 14,

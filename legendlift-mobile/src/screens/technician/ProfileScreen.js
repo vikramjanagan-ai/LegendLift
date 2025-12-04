@@ -3,10 +3,10 @@ import { View, Text, StyleSheet, ScrollView } from 'react-native';
 import { Header } from '../../components/common';
 import { COLORS, SIZES } from '../../constants/theme';
 
-const ProfileScreen = () => {
+const ProfileScreen = ({ navigation }) => {
   return (
     <View style={styles.container}>
-      <Header title="Profile" showBack={false} />
+      <Header title="Profile" showBack={true} onBackPress={() => navigation.goBack()} />
       <ScrollView style={styles.content}>
         <Text style={styles.text}>Profile Screen - Coming Soon</Text>
       </ScrollView>

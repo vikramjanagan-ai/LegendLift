@@ -1,9 +1,9 @@
 export * from './theme';
 
 // API Configuration
-// Using LocalTunnel for cross-network access
+// Using Cloudflare Tunnel for cross-network access
 export const API_CONFIG = {
-  BASE_URL: 'https://turbo-trusts-voltage-connections.trycloudflare.com/api/v1',
+  BASE_URL: 'https://electro-provider-biology-editors.trycloudflare.com/api/v1',
   TIMEOUT: 30000,
   DEFAULT_HEADERS: {
     'Bypass-Tunnel-Reminder': 'true',

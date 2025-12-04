@@ -11,7 +11,7 @@ import ServicesStackNavigator from './ServicesStackNavigator';
 import PaymentsStackNavigator from './PaymentsStackNavigator';
 import CustomersStackNavigator from './CustomersStackNavigator';
 import CallBacksStackNavigator from './CallBacksStackNavigator';
-import ReportsScreen from '../screens/admin/ReportsScreen';
+import ReportsStackNavigator from './ReportsStackNavigator';
 import TechnicianManagementScreen from '../screens/admin/TechnicianManagementScreen';
 import MoreScreen from '../screens/admin/MoreScreen';
 
@@ -73,7 +73,7 @@ const TabNavigatorContent = () => {
       <Tab.Screen name="Customers" component={CustomersStackNavigator} />
       {/* <Tab.Screen name="Payments" component={PaymentsStackNavigator} /> */}
       <Tab.Screen name="CallBacks" component={CallBacksStackNavigator} options={{ title: 'Callbacks' }} />
-      <Tab.Screen name="Reports" component={ReportsScreen} />
+      <Tab.Screen name="Reports" component={ReportsStackNavigator} />
       <Tab.Screen name="Technicians" component={TechnicianManagementScreen} />
       <Tab.Screen name="More" component={MoreScreen} />
     </Tab.Navigator>

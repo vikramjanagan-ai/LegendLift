@@ -25,6 +25,7 @@ class CallBack(Base):
     __tablename__ = "callbacks"
 
     id = Column(String, primary_key=True, index=True)
+    job_id = Column(String, unique=True, nullable=True, index=True)  # Human-readable Job ID (e.g., CB-20250128-001)
     customer_id = Column(String, ForeignKey("customers.id"), nullable=False, index=True)
     created_by_admin_id = Column(String, ForeignKey("users.id"), nullable=False)
     scheduled_date = Column(DateTime, nullable=False, index=True)
@@ -39,7 +40,8 @@ class CallBack(Base):
     issue_faced = Column(Text, nullable=True)
     customer_reporting_person = Column(String, nullable=True)
     problem_solved = Column(Text, nullable=True)
-    report_attachment_url = Column(String, nullable=True)  # Video or photo URL
+    report_attachment_url = Column(String, nullable=True)  # DEPRECATED: Use completion_images instead
+    completion_images = Column(JSON, nullable=True)  # Array of image URLs uploaded by technician on completion
     materials_changed = Column(JSON, nullable=True)  # Array of materials
     lift_status_on_closure = Column(Enum(LiftStatus), nullable=True)
     requires_followup = Column(String, nullable=True, default="false")  # "true" if closed with error

@@ -11,6 +11,7 @@ from app.models.callback import CallBack
 from app.models.customer import Customer
 from app.schemas.callback import CallBackCreate, CallBackUpdate, CallBackResponse, CallBackAssignTechnician
 from app.api.deps import get_current_user, get_current_active_admin
+from app.job_id_utils import generate_callback_job_id
 
 router = APIRouter()
 
@@ -22,7 +23,8 @@ class MarkResultRequest(BaseModel):
     lift_status_on_closure: str
     requires_followup: str = "false"
     materials_changed: Optional[List[dict]] = None
-    report_attachment_url: Optional[str] = None
+    report_attachment_url: Optional[str] = None  # DEPRECATED: Use completion_images instead
+    completion_images: Optional[List[str]] = None  # Array of image URLs uploaded by technician
 
 
 @router.get("/", response_model=List[CallBackResponse])
@@ -175,8 +177,12 @@ def create_callback(
             detail="Cannot create callback for customer with INACTIVE AMC status"
         )
 
+    # Generate human-readable Job ID
+    job_id = generate_callback_job_id(db)
+
     callback = CallBack(
         id=str(uuid.uuid4()),
+        job_id=job_id,
         customer_id=callback_in.customer_id,
         created_by_admin_id=current_user.id,
         scheduled_date=callback_in.scheduled_date,
@@ -790,7 +796,17 @@ def mark_callback_result(
     callback.issue_faced = request.issue_faced
     callback.customer_reporting_person = request.customer_reporting_person
     callback.problem_solved = request.problem_solved
-    callback.report_attachment_url = request.report_attachment_url
+
+    # Support both old and new image upload fields
+    if request.completion_images:
+        callback.completion_images = json.dumps(request.completion_images)
+        # Also set report_attachment_url to first image for backward compatibility
+        callback.report_attachment_url = request.completion_images[0] if request.completion_images else None
+    elif request.report_attachment_url:
+        # Fallback to old field if new field not provided
+        callback.report_attachment_url = request.report_attachment_url
+        callback.completion_images = json.dumps([request.report_attachment_url])
+
     callback.materials_changed = json.dumps(request.materials_changed) if request.materials_changed else json.dumps([])
     callback.lift_status_on_closure = request.lift_status_on_closure
     callback.requires_followup = request.requires_followup

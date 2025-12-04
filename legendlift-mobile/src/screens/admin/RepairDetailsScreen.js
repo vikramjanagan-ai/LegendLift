@@ -10,7 +10,7 @@ import {
   Linking,
 } from 'react-native';
 import { useSelector } from 'react-redux';
-import { Card, Header } from '../../components/common';
+import { Card, Header, ImageViewer } from '../../components/common';
 import { THEME as theme } from '../../constants/theme';
 import { API_CONFIG } from '../../constants';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
@@ -245,6 +245,57 @@ const RepairDetailsScreen = ({ route, navigation }) => {
           </Card>
         )}
 
+        {/* Before Images */}
+        {repair.before_images && (
+          <Card style={styles.section}>
+            <View style={styles.sectionHeader}>
+              <Icon name="image-album" size={24} color={theme.colors.warning} />
+              <Text style={styles.sectionTitle}>Before Repair Images</Text>
+            </View>
+
+            <ImageViewer
+              images={repair.before_images}
+              title="Before Repair"
+              emptyMessage="No before images uploaded"
+            />
+
+            {repair.started_at && (
+              <Text style={styles.imageDate}>
+                Repair Started: {formatDate(repair.started_at)}
+              </Text>
+            )}
+          </Card>
+        )}
+
+        {/* After Images */}
+        {repair.after_images && (
+          <Card style={styles.section}>
+            <View style={styles.sectionHeader}>
+              <Icon name="image-multiple" size={24} color={theme.colors.success} />
+              <Text style={styles.sectionTitle}>After Repair Images</Text>
+            </View>
+
+            <ImageViewer
+              images={repair.after_images}
+              title="After Repair"
+              emptyMessage="No after images uploaded"
+            />
+
+            {repair.work_done && (
+              <View style={{ marginTop: 12, paddingTop: 12, borderTopWidth: 1, borderTopColor: '#e0e0e0' }}>
+                <Text style={styles.label}>Work Done</Text>
+                <Text style={styles.value}>{repair.work_done}</Text>
+              </View>
+            )}
+
+            {repair.completed_at && (
+              <Text style={styles.imageDate}>
+                Repair Completed: {formatDate(repair.completed_at)}
+              </Text>
+            )}
+          </Card>
+        )}
+
         {/* Action Buttons */}
         {repair.status !== 'COMPLETED' && repair.status !== 'CANCELLED' && (
           <View style={styles.actionButtonsContainer}>
@@ -428,6 +479,12 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '600',
     marginLeft: 8,
+  },
+  imageDate: {
+    fontSize: 12,
+    color: theme.colors.textSecondary,
+    marginTop: 12,
+    fontStyle: 'italic',
   },
 });
 

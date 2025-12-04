@@ -22,6 +22,11 @@ const CallbacksScreen = () => {
 
   const token = useSelector((state) => state.auth.token);
 
+  const getPriorityOrder = (priority) => {
+    const order = { urgent: 1, high: 2, medium: 3, low: 4 };
+    return order[priority?.toLowerCase()] || 5;
+  };
+
   const fetchAvailableCallbacks = async () => {
     try {
       const response = await fetch(`${API_CONFIG.BASE_URL}/complaints/available`, {
@@ -32,7 +37,9 @@ const CallbacksScreen = () => {
 
       if (response.ok) {
         const data = await response.json();
-        setAvailableCallbacks(data);
+        // Sort by priority
+        const sorted = data.sort((a, b) => getPriorityOrder(a.priority) - getPriorityOrder(b.priority));
+        setAvailableCallbacks(sorted);
       }
     } catch (error) {
       console.error('Error fetching available callbacks:', error);
@@ -49,7 +56,9 @@ const CallbacksScreen = () => {
 
       if (response.ok) {
         const data = await response.json();
-        setMyCallbacks(data);
+        // Sort by priority
+        const sorted = data.sort((a, b) => getPriorityOrder(a.priority) - getPriorityOrder(b.priority));
+        setMyCallbacks(sorted);
       }
     } catch (error) {
       console.error('Error fetching my callbacks:', error);

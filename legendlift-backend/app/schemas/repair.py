@@ -23,6 +23,24 @@ class RepairUpdate(BaseModel):
     notes: Optional[str] = None
     completed_at: Optional[datetime] = None
 
+    # Repair completion details
+    repair_type: Optional[str] = None
+    work_done: Optional[str] = None
+    materials_used: Optional[List[dict]] = None
+    before_images: Optional[List[str]] = None  # Array of image URLs taken before repair
+    after_images: Optional[List[str]] = None   # Array of image URLs taken after repair (completion images)
+    customer_approved: Optional[str] = None
+
+    # Cost tracking
+    materials_cost: Optional[float] = None
+    labor_cost: Optional[float] = None
+    total_cost: Optional[float] = None
+    charged_amount: Optional[float] = None
+    payment_status: Optional[str] = None
+
+    # Time tracking
+    started_at: Optional[datetime] = None
+
 
 class RepairAssignTechnician(BaseModel):
     technician_id: str

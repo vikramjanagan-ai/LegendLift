@@ -16,10 +16,16 @@ const RootNavigator = () => {
   const { isAuthenticated, user, loading } = useSelector((state) => state.auth);
 
   useEffect(() => {
-    dispatch(loadStoredAuth());
+    console.log('RootNavigator mounted, loading auth...');
+    dispatch(loadStoredAuth())
+      .then(() => console.log('Auth loaded successfully'))
+      .catch((error) => console.log('Auth load error:', error));
   }, [dispatch]);
 
+  console.log('RootNavigator render - loading:', loading, 'isAuthenticated:', isAuthenticated, 'user:', user);
+
   if (loading) {
+    console.log('Showing loading screen...');
     return <Loading fullScreen text="Loading..." />;
   }
 

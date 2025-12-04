@@ -9,6 +9,7 @@ import {
   Platform,
   Alert,
   ActivityIndicator,
+  TextInput,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import DateTimePicker from '@react-native-community/datetimepicker';
@@ -27,11 +28,13 @@ const CallBackFormModal = ({ visible, onClose, onSubmit, callback = null, preSel
   const [description, setDescription] = useState('');
   const [notes, setNotes] = useState('');
   const [status, setStatus] = useState('PENDING');
-  const [selectedTechnicians, setSelectedTechnicians] = useState([]);
+  const [priority, setPriority] = useState('medium');
 
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [activeCustomers, setActiveCustomers] = useState([]);
   const [technicians, setTechnicians] = useState([]);
+  const [selectedTechnicians, setSelectedTechnicians] = useState([]);
+  const [technicianSearchQuery, setTechnicianSearchQuery] = useState('');
   const [loadingData, setLoadingData] = useState(true);
   const [errors, setErrors] = useState({});
 
@@ -49,6 +52,7 @@ const CallBackFormModal = ({ visible, onClose, onSubmit, callback = null, preSel
       setDescription(callback.description || '');
       setNotes(callback.notes || '');
       setStatus(callback.status || 'PENDING');
+      setPriority(callback.priority || 'medium');
       setSelectedTechnicians(callback.technicians || []);
     } else if (preSelectedCustomer) {
       setCustomerId(preSelectedCustomer.id);
@@ -101,12 +105,20 @@ const CallBackFormModal = ({ visible, onClose, onSubmit, callback = null, preSel
     if (selectedTechnicians.includes(techId)) {
       setSelectedTechnicians(selectedTechnicians.filter(id => id !== techId));
     } else {
-      if (selectedTechnicians.length >= 3) {
-        Alert.alert('Limit Reached', 'Maximum 3 technicians allowed per callback');
-        return;
-      }
       setSelectedTechnicians([...selectedTechnicians, techId]);
     }
+  };
+
+  const getFilteredTechnicians = () => {
+    if (!technicianSearchQuery.trim()) {
+      return technicians;
+    }
+    const query = technicianSearchQuery.toLowerCase();
+    return technicians.filter(tech =>
+      tech.name?.toLowerCase().includes(query) ||
+      tech.email?.toLowerCase().includes(query) ||
+      tech.phone?.includes(query)
+    );
   };
 
   const validate = () => {
@@ -128,6 +140,7 @@ const CallBackFormModal = ({ visible, onClose, onSubmit, callback = null, preSel
         description: description.trim(),
         notes: notes.trim(),
         status,
+        priority,
       };
 
       onSubmit(callbackData, selectedTechnicians);
@@ -141,7 +154,9 @@ const CallBackFormModal = ({ visible, onClose, onSubmit, callback = null, preSel
     setDescription('');
     setNotes('');
     setStatus('PENDING');
+    setPriority('medium');
     setSelectedTechnicians([]);
+    setTechnicianSearchQuery('');
     onClose();
   };
 
@@ -270,6 +285,22 @@ const CallBackFormModal = ({ visible, onClose, onSubmit, callback = null, preSel
                   numberOfLines={3}
                 />
 
+                <View style={styles.pickerContainer}>
+                  <Text style={styles.label}>Priority *</Text>
+                  <View style={styles.pickerWrapper}>
+                    <Picker
+                      selectedValue={priority}
+                      onValueChange={setPriority}
+                      style={styles.picker}
+                    >
+                      <Picker.Item label="Low" value="low" />
+                      <Picker.Item label="Medium" value="medium" />
+                      <Picker.Item label="High" value="high" />
+                      <Picker.Item label="Urgent" value="urgent" />
+                    </Picker>
+                  </View>
+                </View>
+
                 {isEdit && (
                   <View style={styles.pickerContainer}>
                     <Text style={styles.label}>Status</Text>
@@ -289,40 +320,71 @@ const CallBackFormModal = ({ visible, onClose, onSubmit, callback = null, preSel
                 )}
               </View>
 
-              {/* Technician Assignment */}
+              {/* Technician Assignment (Optional) */}
               <View style={styles.section}>
                 <Text style={styles.sectionTitle}>
-                  Assign Technicians (Max 3) - {selectedTechnicians.length}/3
+                  Assign Technicians (Optional) - {selectedTechnicians.length} selected
+                </Text>
+                <Text style={styles.sectionNote}>
+                  Leave empty to let technicians pick this job themselves
                 </Text>
 
-                {technicians.length === 0 ? (
-                  <Text style={styles.emptyText}>No technicians available</Text>
-                ) : (
-                  technicians.map((tech) => (
-                    <TouchableOpacity
-                      key={tech.id}
-                      style={[
-                        styles.technicianCard,
-                        selectedTechnicians.includes(tech.id) && styles.technicianCardSelected,
-                      ]}
-                      onPress={() => toggleTechnician(tech.id)}
-                    >
-                      <View style={styles.technicianInfo}>
-                        <Ionicons
-                          name={selectedTechnicians.includes(tech.id) ? 'checkbox' : 'square-outline'}
-                          size={24}
-                          color={selectedTechnicians.includes(tech.id) ? COLORS.primary : COLORS.grey400}
-                        />
-                        <View style={styles.technicianDetails}>
-                          <Text style={styles.technicianName}>{tech.name}</Text>
-                          {tech.phone && (
-                            <Text style={styles.technicianPhone}>{tech.phone}</Text>
-                          )}
-                        </View>
-                      </View>
+                {/* Search Input */}
+                <View style={styles.searchContainer}>
+                  <Ionicons name="search" size={20} color={COLORS.textSecondary} style={styles.searchIcon} />
+                  <TextInput
+                    style={styles.searchInput}
+                    placeholder="Search technicians by name, email, or phone..."
+                    value={technicianSearchQuery}
+                    onChangeText={setTechnicianSearchQuery}
+                    placeholderTextColor={COLORS.textSecondary}
+                  />
+                  {technicianSearchQuery !== '' && (
+                    <TouchableOpacity onPress={() => setTechnicianSearchQuery('')}>
+                      <Ionicons name="close-circle" size={20} color={COLORS.textSecondary} />
                     </TouchableOpacity>
-                  ))
-                )}
+                  )}
+                </View>
+
+                {/* Technician List */}
+                <ScrollView
+                  style={styles.technicianScrollView}
+                  nestedScrollEnabled={true}
+                >
+                  {getFilteredTechnicians().length === 0 ? (
+                    <Text style={styles.emptyText}>
+                      {technicianSearchQuery ? 'No technicians found' : 'No technicians available'}
+                    </Text>
+                  ) : (
+                    getFilteredTechnicians().map((tech) => (
+                      <TouchableOpacity
+                        key={tech.id}
+                        style={[
+                          styles.technicianCard,
+                          selectedTechnicians.includes(tech.id) && styles.technicianCardSelected,
+                        ]}
+                        onPress={() => toggleTechnician(tech.id)}
+                      >
+                        <View style={styles.technicianInfo}>
+                          <Ionicons
+                            name={selectedTechnicians.includes(tech.id) ? 'checkbox' : 'square-outline'}
+                            size={24}
+                            color={selectedTechnicians.includes(tech.id) ? COLORS.primary : COLORS.grey400}
+                          />
+                          <View style={styles.technicianDetails}>
+                            <Text style={styles.technicianName}>{tech.name}</Text>
+                            {tech.email && (
+                              <Text style={styles.technicianEmail}>{tech.email}</Text>
+                            )}
+                            {tech.phone && (
+                              <Text style={styles.technicianPhone}>{tech.phone}</Text>
+                            )}
+                          </View>
+                        </View>
+                      </TouchableOpacity>
+                    ))
+                  )}
+                </ScrollView>
               </View>
 
               {/* Submit Button */}
@@ -381,10 +443,38 @@ const styles = StyleSheet.create({
     fontSize: SIZES.h4,
     fontWeight: '700',
     color: COLORS.textPrimary,
-    marginBottom: SIZES.marginLG,
+    marginBottom: SIZES.marginSM,
     paddingBottom: SIZES.paddingSM,
     borderBottomWidth: 2,
     borderBottomColor: COLORS.primary,
+  },
+  sectionNote: {
+    fontSize: SIZES.body3,
+    color: COLORS.textSecondary,
+    fontStyle: 'italic',
+    marginBottom: SIZES.marginMD,
+  },
+  searchContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: COLORS.white,
+    borderWidth: 1,
+    borderColor: COLORS.grey300,
+    borderRadius: SIZES.radiusSM,
+    paddingHorizontal: SIZES.paddingMD,
+    marginBottom: SIZES.marginMD,
+  },
+  searchIcon: {
+    marginRight: SIZES.marginSM,
+  },
+  searchInput: {
+    flex: 1,
+    paddingVertical: SIZES.paddingMD,
+    fontSize: SIZES.body2,
+    color: COLORS.textPrimary,
+  },
+  technicianScrollView: {
+    maxHeight: 300,
   },
   label: {
     fontSize: SIZES.body2,
@@ -470,6 +560,11 @@ const styles = StyleSheet.create({
     fontSize: SIZES.body2,
     fontWeight: '600',
     color: COLORS.textPrimary,
+  },
+  technicianEmail: {
+    fontSize: SIZES.body3,
+    color: COLORS.textSecondary,
+    marginTop: 2,
   },
   technicianPhone: {
     fontSize: SIZES.body3,

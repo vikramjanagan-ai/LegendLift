@@ -249,7 +249,6 @@ const styles = StyleSheet.create({
   },
   serviceIdCard: {
     marginBottom: SIZES.marginLG,
-    backgroundColor: COLORS.primary + '10',
   },
   serviceIdHeader: {
     flexDirection: 'row',

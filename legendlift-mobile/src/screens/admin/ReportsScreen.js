@@ -1,317 +1,141 @@
-import React, { useState, useEffect } from 'react';
+import React from 'react';
 import {
   View,
   Text,
   StyleSheet,
   ScrollView,
   TouchableOpacity,
-  ActivityIndicator,
-  RefreshControl,
 } from 'react-native';
-import { useSelector } from 'react-redux';
-import { Card, Button, Header } from '../../components/common';
-import { THEME as theme } from '../../constants/theme';
-import { API_CONFIG } from '../../constants';
+import { Ionicons } from '@expo/vector-icons';
+import { Card, Header } from '../../components/common';
+import { COLORS, SIZES, SHADOWS } from '../../constants/theme';
 
 const ReportsScreen = ({ navigation }) => {
-  const { token } = useSelector((state) => state.auth);
-  const [loading, setLoading] = useState(true);
-  const [refreshing, setRefreshing] = useState(false);
-  const [reportType, setReportType] = useState('daily'); // daily, monthly, yearly
-  const [reportData, setReportData] = useState(null);
-  const [selectedDate, setSelectedDate] = useState(new Date());
+  const reportOptions = [
+    {
+      id: 1,
+      title: 'Customer AMC Report',
+      description: 'Complete AMC period report with services, callbacks, repairs & materials',
+      icon: 'document-text',
+      color: COLORS.primary,
+      screen: 'CustomerAMCReport',
+      premium: true,
+    },
+    {
+      id: 2,
+      title: 'Technician Performance',
+      description: 'Monthly performance metrics, ratings & route coverage',
+      icon: 'analytics',
+      color: COLORS.success,
+      screen: 'TechnicianReport',
+      premium: true,
+    },
+    {
+      id: 3,
+      title: 'Materials Consumption',
+      description: 'Track material usage and costs across all services',
+      icon: 'cube',
+      color: COLORS.warning,
+      screen: 'MaterialsReport',
+      premium: false,
+    },
+    {
+      id: 4,
+      title: 'Revenue Report',
+      description: 'AMC revenue, collection rate & payment analysis',
+      icon: 'cash',
+      color: COLORS.info,
+      screen: 'RevenueReport',
+      premium: false,
+    },
+    {
+      id: 5,
+      title: 'Service Reports',
+      description: 'Daily, weekly & monthly service completion reports',
+      icon: 'bar-chart',
+      color: COLORS.secondary,
+      screen: 'ServiceReports',
+      premium: false,
+    },
+  ];
 
-  useEffect(() => {
-    fetchReport();
-  }, [reportType]);
-
-  const fetchReport = async () => {
-    try {
-      let endpoint = '';
-
-      if (reportType === 'daily') {
-        const dateStr = selectedDate.toISOString().split('T')[0];
-        endpoint = `${API_CONFIG.BASE_URL}/reports/daily?date=${dateStr}`;
-      } else if (reportType === 'monthly') {
-        const month = selectedDate.getMonth() + 1;
-        const year = selectedDate.getFullYear();
-        endpoint = `${API_CONFIG.BASE_URL}/reports/monthly?month=${month}&year=${year}`;
-      } else if (reportType === 'yearly') {
-        const year = selectedDate.getFullYear();
-        endpoint = `${API_CONFIG.BASE_URL}/reports/yearly?year=${year}`;
-      }
-
-      const response = await fetch(endpoint, {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json',
-        },
-      });
-
-      if (response.ok) {
-        const data = await response.json();
-        setReportData(data);
-      }
-    } catch (error) {
-      console.error('Error fetching report:', error);
-    } finally {
-      setLoading(false);
-      setRefreshing(false);
+  const handleReportPress = (report) => {
+    if (report.screen === 'CustomerAMCReport' || report.screen === 'TechnicianReport') {
+      navigation.navigate(report.screen);
+    } else {
+      // Placeholder for other reports
+      alert(`${report.title} - Coming Soon!`);
     }
-  };
-
-  const onRefresh = () => {
-    setRefreshing(true);
-    fetchReport();
-  };
-
-  const renderDailyReport = () => {
-    if (!reportData) return null;
-
-    return (
-      <View>
-        <Card style={styles.statsCard}>
-          <Text style={styles.cardTitle}>Daily Report - {reportData.date}</Text>
-
-          <View style={styles.statsGrid}>
-            <View style={styles.statItem}>
-              <Text style={styles.statValue}>{reportData.total_services}</Text>
-              <Text style={styles.statLabel}>Total Services</Text>
-            </View>
-            <View style={styles.statItem}>
-              <Text style={[styles.statValue, { color: theme.colors.success }]}>
-                {reportData.completed_services}
-              </Text>
-              <Text style={styles.statLabel}>Completed</Text>
-            </View>
-            <View style={styles.statItem}>
-              <Text style={[styles.statValue, { color: theme.colors.warning }]}>
-                {reportData.in_progress_services}
-              </Text>
-              <Text style={styles.statLabel}>In Progress</Text>
-            </View>
-            <View style={styles.statItem}>
-              <Text style={[styles.statValue, { color: theme.colors.error }]}>
-                {reportData.pending_services}
-              </Text>
-              <Text style={styles.statLabel}>Pending</Text>
-            </View>
-          </View>
-        </Card>
-
-        <Card style={styles.statsCard}>
-          <Text style={styles.cardTitle}>Service Types</Text>
-          <View style={styles.typeRow}>
-            <Text style={styles.typeLabel}>Scheduled:</Text>
-            <Text style={styles.typeValue}>{reportData.scheduled_services}</Text>
-          </View>
-          <View style={styles.typeRow}>
-            <Text style={styles.typeLabel}>Ad-hoc:</Text>
-            <Text style={styles.typeValue}>{reportData.adhoc_services}</Text>
-          </View>
-        </Card>
-
-        {reportData.technician_performance?.length > 0 && (
-          <Card style={styles.statsCard}>
-            <Text style={styles.cardTitle}>Technician Performance</Text>
-            {reportData.technician_performance.map((tech, index) => (
-              <View key={index} style={styles.techRow}>
-                <Text style={styles.techName}>{tech.technician_name}</Text>
-                <View style={styles.techStats}>
-                  <Text style={styles.techStat}>
-                    Total: {tech.total_assigned}
-                  </Text>
-                  <Text style={[styles.techStat, { color: theme.colors.success }]}>
-                    Done: {tech.completed}
-                  </Text>
-                </View>
-              </View>
-            ))}
-          </Card>
-        )}
-      </View>
-    );
-  };
-
-  const renderMonthlyReport = () => {
-    if (!reportData) return null;
-
-    return (
-      <View>
-        <Card style={styles.statsCard}>
-          <Text style={styles.cardTitle}>
-            Monthly Report - {reportData.month_name} {reportData.year}
-          </Text>
-
-          <View style={styles.statsGrid}>
-            <View style={styles.statItem}>
-              <Text style={styles.statValue}>{reportData.total_services}</Text>
-              <Text style={styles.statLabel}>Total Services</Text>
-            </View>
-            <View style={styles.statItem}>
-              <Text style={[styles.statValue, { color: theme.colors.success }]}>
-                {reportData.completed_services}
-              </Text>
-              <Text style={styles.statLabel}>Completed</Text>
-            </View>
-            <View style={styles.statItem}>
-              <Text style={[styles.statValue, { color: theme.colors.primary }]}>
-                {reportData.completion_rate}%
-              </Text>
-              <Text style={styles.statLabel}>Completion Rate</Text>
-            </View>
-            <View style={styles.statItem}>
-              <Text style={[styles.statValue, { color: theme.colors.warning }]}>
-                {reportData.adhoc_services}
-              </Text>
-              <Text style={styles.statLabel}>Ad-hoc</Text>
-            </View>
-          </View>
-        </Card>
-
-        {reportData.technician_performance?.length > 0 && (
-          <Card style={styles.statsCard}>
-            <Text style={styles.cardTitle}>Top Performers</Text>
-            {reportData.technician_performance
-              .sort((a, b) => b.completion_rate - a.completion_rate)
-              .slice(0, 5)
-              .map((tech, index) => (
-                <View key={index} style={styles.techRow}>
-                  <View>
-                    <Text style={styles.techName}>{tech.technician_name}</Text>
-                    <Text style={styles.techDetail}>
-                      {tech.completed}/{tech.total_assigned} completed
-                    </Text>
-                  </View>
-                  <Text style={[styles.completionRate,
-                    tech.completion_rate >= 80 ? { color: theme.colors.success } :
-                    tech.completion_rate >= 60 ? { color: theme.colors.warning } :
-                    { color: theme.colors.error }
-                  ]}>
-                    {tech.completion_rate.toFixed(1)}%
-                  </Text>
-                </View>
-              ))}
-          </Card>
-        )}
-      </View>
-    );
-  };
-
-  const renderYearlyReport = () => {
-    if (!reportData) return null;
-
-    return (
-      <View>
-        <Card style={styles.statsCard}>
-          <Text style={styles.cardTitle}>Yearly Report - {reportData.year}</Text>
-
-          <View style={styles.statsGrid}>
-            <View style={styles.statItem}>
-              <Text style={styles.statValue}>{reportData.total_services}</Text>
-              <Text style={styles.statLabel}>Total Services</Text>
-            </View>
-            <View style={styles.statItem}>
-              <Text style={[styles.statValue, { color: theme.colors.success }]}>
-                {reportData.completed_services}
-              </Text>
-              <Text style={styles.statLabel}>Completed</Text>
-            </View>
-            <View style={styles.statItem}>
-              <Text style={[styles.statValue, { color: theme.colors.primary }]}>
-                {reportData.completion_rate}%
-              </Text>
-              <Text style={styles.statLabel}>Completion Rate</Text>
-            </View>
-            <View style={styles.statItem}>
-              <Text style={styles.statValue}>
-                {(reportData.total_services / 12).toFixed(0)}
-              </Text>
-              <Text style={styles.statLabel}>Avg/Month</Text>
-            </View>
-          </View>
-        </Card>
-
-        {reportData.monthly_breakdown?.length > 0 && (
-          <Card style={styles.statsCard}>
-            <Text style={styles.cardTitle}>Monthly Breakdown</Text>
-            <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-              <View style={styles.chartContainer}>
-                {reportData.monthly_breakdown.map((month, index) => (
-                  <View key={index} style={styles.monthBar}>
-                    <View
-                      style={[
-                        styles.bar,
-                        {
-                          height: Math.max((month.total / reportData.total_services) * 200, 20),
-                          backgroundColor: theme.colors.primary
-                        }
-                      ]}
-                    >
-                      <Text style={styles.barValue}>{month.total}</Text>
-                    </View>
-                    <Text style={styles.monthLabel}>{month.month_name}</Text>
-                  </View>
-                ))}
-              </View>
-            </ScrollView>
-          </Card>
-        )}
-      </View>
-    );
   };
 
   return (
     <View style={styles.container}>
       <Header
-        title="Service Reports"
-        subtitle="View analytics and insights"
+        title="Reports"
+        subtitle="Generate detailed reports"
         showBack={true}
-        onLeftPress={() => navigation.goBack()}
+        onBackPress={() => navigation.goBack()}
       />
 
-      <View style={styles.tabContainer}>
-        <TouchableOpacity
-          style={[styles.tab, reportType === 'daily' && styles.activeTab]}
-          onPress={() => setReportType('daily')}
-        >
-          <Text style={[styles.tabText, reportType === 'daily' && styles.activeTabText]}>
-            Daily
-          </Text>
-        </TouchableOpacity>
-        <TouchableOpacity
-          style={[styles.tab, reportType === 'monthly' && styles.activeTab]}
-          onPress={() => setReportType('monthly')}
-        >
-          <Text style={[styles.tabText, reportType === 'monthly' && styles.activeTabText]}>
-            Monthly
-          </Text>
-        </TouchableOpacity>
-        <TouchableOpacity
-          style={[styles.tab, reportType === 'yearly' && styles.activeTab]}
-          onPress={() => setReportType('yearly')}
-        >
-          <Text style={[styles.tabText, reportType === 'yearly' && styles.activeTabText]}>
-            Yearly
-          </Text>
-        </TouchableOpacity>
-      </View>
+      <ScrollView contentContainerStyle={styles.content}>
+        {/* Header Card */}
+        <Card style={styles.headerCard}>
+          <View style={styles.headerContent}>
+            <Ionicons name="pie-chart" size={40} color={COLORS.primary} />
+            <View style={styles.headerText}>
+              <Text style={styles.headerTitle}>Advanced Reports</Text>
+              <Text style={styles.headerSubtitle}>
+                Comprehensive insights for your business
+              </Text>
+            </View>
+          </View>
+        </Card>
 
-      <ScrollView
-        style={styles.content}
-        refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
-        }
-      >
-        {loading ? (
-          <ActivityIndicator size="large" color={theme.colors.primary} style={styles.loader} />
-        ) : (
-          <>
-            {reportType === 'daily' && renderDailyReport()}
-            {reportType === 'monthly' && renderMonthlyReport()}
-            {reportType === 'yearly' && renderYearlyReport()}
-          </>
-        )}
+        {/* Report Options */}
+        {reportOptions.map((report) => (
+          <TouchableOpacity
+            key={report.id}
+            onPress={() => handleReportPress(report)}
+            activeOpacity={0.7}
+          >
+            <Card style={styles.reportCard}>
+              <View style={styles.reportContent}>
+                <View
+                  style={[
+                    styles.iconContainer,
+                    { backgroundColor: report.color + '20' },
+                  ]}
+                >
+                  <Ionicons name={report.icon} size={28} color={report.color} />
+                </View>
+
+                <View style={styles.reportInfo}>
+                  <View style={styles.titleRow}>
+                    <Text style={styles.reportTitle}>{report.title}</Text>
+                    {report.premium && (
+                      <View style={styles.premiumBadge}>
+                        <Ionicons name="star" size={12} color={COLORS.warning} />
+                        <Text style={styles.premiumText}>NEW</Text>
+                      </View>
+                    )}
+                  </View>
+                  <Text style={styles.reportDescription}>{report.description}</Text>
+                </View>
+
+                <Ionicons name="chevron-forward" size={20} color={COLORS.textSecondary} />
+              </View>
+            </Card>
+          </TouchableOpacity>
+        ))}
+
+        {/* Info Card */}
+        <Card style={styles.infoCard}>
+          <Ionicons name="information-circle" size={24} color={COLORS.info} />
+          <Text style={styles.infoText}>
+            Select a report type to generate detailed insights. Reports can be shared or
+            exported to PDF/Excel.
+          </Text>
+        </Card>
       </ScrollView>
     </View>
   );
@@ -320,145 +144,95 @@ const ReportsScreen = ({ navigation }) => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: theme.colors.background,
-  },
-  tabContainer: {
-    flexDirection: 'row',
-    backgroundColor: '#fff',
-    borderBottomWidth: 1,
-    borderBottomColor: theme.colors.border,
-  },
-  tab: {
-    flex: 1,
-    paddingVertical: 15,
-    alignItems: 'center',
-    borderBottomWidth: 3,
-    borderBottomColor: 'transparent',
-  },
-  activeTab: {
-    borderBottomColor: theme.colors.primary,
-  },
-  tabText: {
-    fontSize: 16,
-    color: theme.colors.textSecondary,
-    fontWeight: '500',
-  },
-  activeTabText: {
-    color: theme.colors.primary,
-    fontWeight: 'bold',
+    backgroundColor: COLORS.background,
   },
   content: {
+    padding: SIZES.md,
+  },
+  headerCard: {
+    marginBottom: SIZES.md,
+    padding: SIZES.lg,
+    backgroundColor: COLORS.primaryLight,
+  },
+  headerContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: SIZES.md,
+  },
+  headerText: {
     flex: 1,
-    padding: 15,
   },
-  loader: {
-    marginTop: 50,
+  headerTitle: {
+    fontSize: 20,
+    fontWeight: '700',
+    color: COLORS.textPrimary,
+    marginBottom: SIZES.xs,
   },
-  statsCard: {
-    marginBottom: 15,
+  headerSubtitle: {
+    fontSize: 14,
+    color: COLORS.textSecondary,
   },
-  cardTitle: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    color: theme.colors.text,
-    marginBottom: 15,
+  reportCard: {
+    marginBottom: SIZES.md,
+    padding: SIZES.md,
   },
-  statsGrid: {
+  reportContent: {
     flexDirection: 'row',
-    flexWrap: 'wrap',
-    justifyContent: 'space-between',
-  },
-  statItem: {
-    width: '48%',
-    padding: 15,
-    backgroundColor: theme.colors.backgroundLight,
-    borderRadius: 8,
-    marginBottom: 10,
     alignItems: 'center',
+    gap: SIZES.md,
   },
-  statValue: {
-    fontSize: 28,
-    fontWeight: 'bold',
-    color: theme.colors.primary,
-  },
-  statLabel: {
-    fontSize: 12,
-    color: theme.colors.textSecondary,
-    marginTop: 5,
-  },
-  typeRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    paddingVertical: 10,
-    borderBottomWidth: 1,
-    borderBottomColor: theme.colors.border,
-  },
-  typeLabel: {
-    fontSize: 16,
-    color: theme.colors.text,
-  },
-  typeValue: {
-    fontSize: 16,
-    fontWeight: 'bold',
-    color: theme.colors.primary,
-  },
-  techRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
+  iconContainer: {
+    width: 56,
+    height: 56,
+    borderRadius: SIZES.radiusSM,
     alignItems: 'center',
-    paddingVertical: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: theme.colors.border,
+    justifyContent: 'center',
   },
-  techName: {
+  reportInfo: {
+    flex: 1,
+  },
+  titleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: SIZES.xs,
+    marginBottom: SIZES.xs,
+  },
+  reportTitle: {
     fontSize: 16,
     fontWeight: '600',
-    color: theme.colors.text,
+    color: COLORS.textPrimary,
   },
-  techStats: {
+  premiumBadge: {
     flexDirection: 'row',
-    gap: 15,
+    alignItems: 'center',
+    backgroundColor: COLORS.warningLight,
+    paddingHorizontal: SIZES.xs,
+    paddingVertical: 2,
+    borderRadius: SIZES.radiusSM,
+    gap: 2,
   },
-  techStat: {
-    fontSize: 14,
-    color: theme.colors.textSecondary,
+  premiumText: {
+    fontSize: 10,
+    fontWeight: '700',
+    color: COLORS.warning,
   },
-  techDetail: {
-    fontSize: 12,
-    color: theme.colors.textSecondary,
-    marginTop: 4,
+  reportDescription: {
+    fontSize: 13,
+    color: COLORS.textSecondary,
+    lineHeight: 18,
   },
-  completionRate: {
-    fontSize: 18,
-    fontWeight: 'bold',
-  },
-  chartContainer: {
+  infoCard: {
+    marginTop: SIZES.md,
+    padding: SIZES.md,
     flexDirection: 'row',
-    alignItems: 'flex-end',
-    paddingVertical: 20,
-    gap: 10,
+    gap: SIZES.sm,
+    backgroundColor: COLORS.infoLight + '40',
   },
-  monthBar: {
-    alignItems: 'center',
-    width: 50,
-  },
-  bar: {
-    width: 40,
-    backgroundColor: theme.colors.primary,
-    borderRadius: 4,
-    justifyContent: 'flex-end',
-    alignItems: 'center',
-    paddingBottom: 5,
-  },
-  barValue: {
-    fontSize: 10,
-    color: '#fff',
-    fontWeight: 'bold',
-  },
-  monthLabel: {
-    fontSize: 10,
-    color: theme.colors.textSecondary,
-    marginTop: 5,
+  infoText: {
+    flex: 1,
+    fontSize: 13,
+    color: COLORS.textSecondary,
+    lineHeight: 18,
   },
 });
 

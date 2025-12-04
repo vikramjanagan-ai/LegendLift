@@ -10,6 +10,7 @@ from app.models.minor_point import MinorPoint, MinorPointStatus
 from app.models.payment import Payment, PaymentStatus
 from app.models.escalation import Escalation, EscalationPriority, EscalationStatus
 from app.models.counter import SequentialCounter
+from app.models.material_usage import MaterialUsage
 
 __all__ = [
     "User",
@@ -40,4 +41,5 @@ __all__ = [
     "EscalationPriority",
     "EscalationStatus",
     "SequentialCounter",
+    "MaterialUsage",
 ]

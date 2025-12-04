@@ -10,6 +10,7 @@ import {
   Alert,
   ActivityIndicator,
   Switch,
+  TextInput,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import DateTimePicker from '@react-native-community/datetimepicker';
@@ -38,6 +39,7 @@ const RepairFormModal = ({ visible, onClose, onSubmit, repair = null, preSelecte
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [customers, setCustomers] = useState([]);
   const [technicians, setTechnicians] = useState([]);
+  const [technicianSearchQuery, setTechnicianSearchQuery] = useState('');
   const [loadingData, setLoadingData] = useState(true);
   const [errors, setErrors] = useState({});
 
@@ -115,6 +117,18 @@ const RepairFormModal = ({ visible, onClose, onSubmit, repair = null, preSelecte
     }
   };
 
+  const getFilteredTechnicians = () => {
+    if (!technicianSearchQuery.trim()) {
+      return technicians;
+    }
+    const query = technicianSearchQuery.toLowerCase();
+    return technicians.filter(tech =>
+      tech.name?.toLowerCase().includes(query) ||
+      tech.email?.toLowerCase().includes(query) ||
+      tech.phone?.includes(query)
+    );
+  };
+
   const validate = () => {
     const newErrors = {};
 
@@ -159,6 +173,7 @@ const RepairFormModal = ({ visible, onClose, onSubmit, repair = null, preSelecte
     setNotes('');
     setStatus('PENDING');
     setSelectedTechnicians([]);
+    setTechnicianSearchQuery('');
     onClose();
   };
 
@@ -344,13 +359,40 @@ const RepairFormModal = ({ visible, onClose, onSubmit, repair = null, preSelecte
               {/* Technician Assignment */}
               <View style={styles.section}>
                 <Text style={styles.sectionTitle}>
-                  Assign Technicians (Unlimited) - {selectedTechnicians.length} selected
+                  Assign Technicians (Optional) - {selectedTechnicians.length} selected
+                </Text>
+                <Text style={styles.sectionNote}>
+                  Leave empty to let technicians pick this repair themselves
                 </Text>
 
-                {technicians.length === 0 ? (
-                  <Text style={styles.emptyText}>No technicians available</Text>
-                ) : (
-                  technicians.map((tech) => (
+                {/* Search Input */}
+                <View style={styles.searchContainer}>
+                  <Ionicons name="search" size={20} color={COLORS.textSecondary} style={styles.searchIcon} />
+                  <TextInput
+                    style={styles.searchInput}
+                    placeholder="Search technicians by name, email, or phone..."
+                    value={technicianSearchQuery}
+                    onChangeText={setTechnicianSearchQuery}
+                    placeholderTextColor={COLORS.textSecondary}
+                  />
+                  {technicianSearchQuery !== '' && (
+                    <TouchableOpacity onPress={() => setTechnicianSearchQuery('')}>
+                      <Ionicons name="close-circle" size={20} color={COLORS.textSecondary} />
+                    </TouchableOpacity>
+                  )}
+                </View>
+
+                {/* Technician List */}
+                <ScrollView
+                  style={styles.technicianScrollView}
+                  nestedScrollEnabled={true}
+                >
+                  {getFilteredTechnicians().length === 0 ? (
+                    <Text style={styles.emptyText}>
+                      {technicianSearchQuery ? 'No technicians found' : 'No technicians available'}
+                    </Text>
+                  ) : (
+                    getFilteredTechnicians().map((tech) => (
                     <TouchableOpacity
                       key={tech.id}
                       style={[
@@ -367,6 +409,9 @@ const RepairFormModal = ({ visible, onClose, onSubmit, repair = null, preSelecte
                         />
                         <View style={styles.technicianDetails}>
                           <Text style={styles.technicianName}>{tech.name}</Text>
+                          {tech.email && (
+                            <Text style={styles.technicianEmail}>{tech.email}</Text>
+                          )}
                           {tech.phone && (
                             <Text style={styles.technicianPhone}>{tech.phone}</Text>
                           )}
@@ -374,7 +419,8 @@ const RepairFormModal = ({ visible, onClose, onSubmit, repair = null, preSelecte
                       </View>
                     </TouchableOpacity>
                   ))
-                )}
+                  )}
+                </ScrollView>
               </View>
 
               {/* Submit Button */}
@@ -433,10 +479,38 @@ const styles = StyleSheet.create({
     fontSize: SIZES.h4,
     fontWeight: '700',
     color: COLORS.textPrimary,
-    marginBottom: SIZES.marginLG,
+    marginBottom: SIZES.marginSM,
     paddingBottom: SIZES.paddingSM,
     borderBottomWidth: 2,
     borderBottomColor: COLORS.primary,
+  },
+  sectionNote: {
+    fontSize: SIZES.body3,
+    color: COLORS.textSecondary,
+    fontStyle: 'italic',
+    marginBottom: SIZES.marginMD,
+  },
+  searchContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: COLORS.white,
+    borderWidth: 1,
+    borderColor: COLORS.grey300,
+    borderRadius: SIZES.radiusSM,
+    paddingHorizontal: SIZES.paddingMD,
+    marginBottom: SIZES.marginMD,
+  },
+  searchIcon: {
+    marginRight: SIZES.marginSM,
+  },
+  searchInput: {
+    flex: 1,
+    paddingVertical: SIZES.paddingMD,
+    fontSize: SIZES.body2,
+    color: COLORS.textPrimary,
+  },
+  technicianScrollView: {
+    maxHeight: 300,
   },
   switchContainer: {
     flexDirection: 'row',
@@ -537,6 +611,11 @@ const styles = StyleSheet.create({
     fontSize: SIZES.body2,
     fontWeight: '600',
     color: COLORS.textPrimary,
+  },
+  technicianEmail: {
+    fontSize: SIZES.body3,
+    color: COLORS.textSecondary,
+    marginTop: 2,
   },
   technicianPhone: {
     fontSize: SIZES.body3,

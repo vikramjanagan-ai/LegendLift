@@ -369,7 +369,6 @@ const styles = StyleSheet.create({
   },
   nextServiceCard: {
     marginBottom: SIZES.marginLG,
-    backgroundColor: COLORS.primary + '10',
   },
   nextServiceHeader: {
     flexDirection: 'row',
